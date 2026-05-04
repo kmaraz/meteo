@@ -4,7 +4,7 @@ import {
   normalizeGeocodingResponse,
   normalizeOpenMeteoForecast,
   normalizeForecastModel,
-} from "./open-meteo.js?v=20260504-share-url";
+} from "./open-meteo.js?v=20260504-map-picker";
 
 export async function fetchForecastData(
   { lat, lon, locationName, view, model },

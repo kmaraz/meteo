@@ -1,14 +1,15 @@
-import { fetchForecastData, fetchSlovakGeocoding } from "./client-api.js?v=20260504-share-url";
+import { fetchForecastData } from "./client-api.js?v=20260504-map-picker";
 import {
   buildForecastShareUrl,
   forecastLocationFromUrl,
   forecastViewForAction,
   forecastViewFromUrl,
   getDefaultLocation,
+  locationFromMapPoint,
   moonLitPath,
   saveDefaultLocation,
-} from "./forecast-controls.js?v=20260504-share-url";
-import { FORECAST_MODELS, forecastModelLabel, normalizeForecastModel } from "./open-meteo.js?v=20260504-share-url";
+} from "./forecast-controls.js?v=20260504-map-picker";
+import { FORECAST_MODELS, forecastModelLabel, normalizeForecastModel } from "./open-meteo.js?v=20260504-map-picker";
 
 const defaultLocation = {
   locationName: "Devínska Nová Ves, Okres Bratislava IV, Slovakia",
@@ -22,6 +23,15 @@ let currentLocation = null;
 let currentView = "current";
 let currentModel = "best_match";
 let saveButtonResetTimer = null;
+let mapPicker = null;
+let mapMarker = null;
+let selectedMapLocation = null;
+
+const mapTileUrl = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+const mapTileOptions = {
+  maxZoom: 19,
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+};
 
 const cloudColors = [
   "#558cc8",
@@ -203,14 +213,6 @@ async function loadForecast({ lat, lon, locationName }, options = {}) {
   document.querySelector("#forecast").setAttribute("aria-busy", "false");
 }
 
-async function geocodeSlovakLocation(name) {
-  const data = await fetchSlovakGeocoding(name);
-  if (!data.results.length) {
-    throw new Error(`No Slovak location found for "${name}"`);
-  }
-  return data.results[0];
-}
-
 function setStatus(message) {
   document.querySelector("#forecast-status").textContent = message;
 }
@@ -265,7 +267,6 @@ function updateActionButtons() {
 function applyLocationInputs(location) {
   document.querySelector("#latitude").value = location.lat;
   document.querySelector("#longitude").value = location.lon;
-  document.querySelector("#address").value = location.locationName;
 }
 
 function renderModelSelect() {
@@ -305,6 +306,98 @@ function syncShareUrl() {
   window.history.replaceState(null, "", shareUrl);
 }
 
+function initializeMapPicker() {
+  if (mapPicker || !window.L) return;
+
+  mapPicker = window.L.map("map-picker", {
+    zoomControl: true,
+    attributionControl: true,
+  });
+  window.L.tileLayer(mapTileUrl, mapTileOptions).addTo(mapPicker);
+  mapPicker.on("click", (event) => {
+    setMapSelection(event.latlng);
+  });
+}
+
+function currentMapCenter() {
+  const latitude = Number(document.querySelector("#latitude").value || currentLocation?.lat || defaultLocation.lat);
+  const longitude = Number(document.querySelector("#longitude").value || currentLocation?.lon || defaultLocation.lon);
+  if (
+    Number.isFinite(latitude) &&
+    latitude >= -90 &&
+    latitude <= 90 &&
+    Number.isFinite(longitude) &&
+    longitude >= -180 &&
+    longitude <= 180
+  ) {
+    return { lat: latitude, lng: longitude };
+  }
+  return { lat: Number(defaultLocation.lat), lng: Number(defaultLocation.lon) };
+}
+
+function openMapPicker() {
+  if (!window.L) {
+    setStatus("Map picker is unavailable. Check the map library connection.");
+    return;
+  }
+
+  const dialog = document.querySelector("#map-dialog");
+  dialog.hidden = false;
+  document.body.classList.add("map-dialog-open");
+  initializeMapPicker();
+
+  const center = currentMapCenter();
+  resetMapSelection();
+  mapPicker.setView([center.lat, center.lng], mapPicker.getZoom() || 10);
+  requestAnimationFrame(() => {
+    mapPicker.invalidateSize();
+    document.querySelector("#map-picker").focus();
+  });
+}
+
+function closeMapPicker() {
+  document.querySelector("#map-dialog").hidden = true;
+  document.body.classList.remove("map-dialog-open");
+  document.querySelector("#open-map-picker").focus();
+}
+
+function resetMapSelection() {
+  selectedMapLocation = null;
+  if (mapMarker) {
+    mapMarker.remove();
+    mapMarker = null;
+  }
+  document.querySelector("#map-selected-coordinates").textContent = "Click on the map to select a point";
+  document.querySelector("#use-map-picker").disabled = true;
+}
+
+function setMapSelection(point) {
+  selectedMapLocation = locationFromMapPoint(point);
+  const latlng = [Number(selectedMapLocation.lat), Number(selectedMapLocation.lon)];
+  if (!mapMarker) {
+    mapMarker = window.L.marker(latlng).addTo(mapPicker);
+  } else {
+    mapMarker.setLatLng(latlng);
+  }
+  document.querySelector("#map-selected-coordinates").textContent =
+    `${selectedMapLocation.lat}, ${selectedMapLocation.lon}`;
+  document.querySelector("#use-map-picker").disabled = false;
+}
+
+async function useSelectedMapLocation() {
+  if (!selectedMapLocation) return;
+  applyLocationInputs(selectedMapLocation);
+  document.querySelector("#map-dialog").hidden = true;
+  document.body.classList.remove("map-dialog-open");
+
+  try {
+    await loadForecast(selectedMapLocation, { view: "current", model: currentModel });
+  } catch (error) {
+    setStatus(error.message);
+    document.querySelector("#forecast").setAttribute("aria-busy", "false");
+  }
+}
+
 document.querySelector("#forecast").addEventListener("click", (event) => {
   const button = event.target.closest(".day-date");
   if (!button) return;
@@ -314,26 +407,10 @@ document.querySelector("#forecast").addEventListener("click", (event) => {
 
 document.querySelector("#forecast-form").addEventListener("submit", async (event) => {
   event.preventDefault();
-  const address = document.querySelector("#address").value.trim();
   const latitude = document.querySelector("#latitude");
   const longitude = document.querySelector("#longitude");
 
   try {
-    if (address) {
-      const location = await geocodeSlovakLocation(address);
-      latitude.value = location.latitude;
-      longitude.value = location.longitude;
-      await loadForecast(
-        {
-          lat: location.latitude,
-          lon: location.longitude,
-          locationName: location.label,
-        },
-        { view: "current" },
-      );
-      return;
-    }
-
     await loadForecast(
       {
         lat: latitude.value.trim(),
@@ -345,6 +422,21 @@ document.querySelector("#forecast-form").addEventListener("submit", async (event
   } catch (error) {
     setStatus(error.message);
     document.querySelector("#forecast").setAttribute("aria-busy", "false");
+  }
+});
+
+document.querySelector("#open-map-picker").addEventListener("click", openMapPicker);
+document.querySelector("#close-map-picker").addEventListener("click", closeMapPicker);
+document.querySelector("#cancel-map-picker").addEventListener("click", closeMapPicker);
+document.querySelector("#use-map-picker").addEventListener("click", useSelectedMapLocation);
+document.querySelector("#map-dialog").addEventListener("click", (event) => {
+  if (event.target.id === "map-dialog") {
+    closeMapPicker();
+  }
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !document.querySelector("#map-dialog").hidden) {
+    closeMapPicker();
   }
 });
 

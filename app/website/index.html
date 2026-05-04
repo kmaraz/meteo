@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Clear Outside Local UX Copy</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="stylesheet" href="./styles.css">
   </head>
   <body>
@@ -22,10 +23,9 @@
     <main>
       <section class="container address-panel" aria-label="Forecast lookup">
         <form id="forecast-form">
-          <input id="address" name="address" type="text" placeholder="Lookup Address / Town / Postcode" autocomplete="off">
-          <span class="or-label">or enter</span>
           <input id="latitude" name="latitude" type="text" value="48.21" aria-label="Latitude">
           <input id="longitude" name="longitude" type="text" value="16.97" aria-label="Longitude">
+          <button id="open-map-picker" class="map-picker-trigger" type="button" aria-haspopup="dialog">or select on map</button>
           <button type="submit">Get Forecast <span aria-hidden="true" class="button-cloud"></span></button>
         </form>
       </section>
@@ -54,6 +54,27 @@
       </section>
     </main>
 
-    <script type="module" src="./script.js?v=20260504-remove-source-badge"></script>
+    <div id="map-dialog" class="map-dialog" role="dialog" aria-modal="true" aria-labelledby="map-dialog-title" hidden>
+      <div class="map-panel">
+        <div class="map-panel-header">
+          <div>
+            <h2 id="map-dialog-title">Select forecast location</h2>
+            <p>Click a point on the map, then use it for the forecast.</p>
+          </div>
+          <button id="close-map-picker" class="map-close" type="button" aria-label="Close map">x</button>
+        </div>
+        <div id="map-picker" class="map-canvas" tabindex="0" aria-label="OpenStreetMap location picker"></div>
+        <div class="map-panel-footer">
+          <output id="map-selected-coordinates">No point selected</output>
+          <div class="map-panel-actions">
+            <button id="cancel-map-picker" type="button">Cancel</button>
+            <button id="use-map-picker" type="button" disabled>Use selected point</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script type="module" src="./script.js?v=20260504-map-picker"></script>
   </body>
 </html>

@@ -7,6 +7,7 @@ import {
   forecastViewForAction,
   forecastViewFromUrl,
   getDefaultLocation,
+  locationFromMapPoint,
   moonLitPath,
   saveDefaultLocation,
 } from "../app/website/forecast-controls.js";
@@ -102,6 +103,16 @@ describe("forecast URL state", () => {
       url,
       "https://www.maraz.sk/meteo/?lat=48.21&lon=16.97&model=icon_d2&view=midday#forecast",
     );
+  });
+});
+
+describe("map point forecast location", () => {
+  it("formats selected map coordinates for forecast lookup", () => {
+    assert.deepEqual(locationFromMapPoint({ lat: 48.1481642, lng: 17.106741 }), {
+      locationName: "48.14816, 17.10674",
+      lat: "48.14816",
+      lon: "17.10674",
+    });
   });
 });
 

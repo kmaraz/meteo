@@ -56,6 +56,16 @@ export function buildForecastShareUrl(baseUrl, { lat, lon, model, view }) {
   return url.toString();
 }
 
+export function locationFromMapPoint(point) {
+  const lat = formatMapCoordinate(point.lat);
+  const lon = formatMapCoordinate(point.lng ?? point.lon);
+  return {
+    locationName: `${lat}, ${lon}`,
+    lat,
+    lon,
+  };
+}
+
 export function moonLitPath({ illumination, waxing }) {
   const lit = Math.max(0, Math.min(Number(illumination) / 100, 1));
   if (lit <= 0.01) {
@@ -91,6 +101,14 @@ function coordinateFromUrl(value, min, max) {
   const number = Number(coordinate);
   if (!Number.isFinite(number) || number < min || number > max) return null;
   return coordinate;
+}
+
+function formatMapCoordinate(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    throw new Error("Invalid map coordinate");
+  }
+  return number.toFixed(5);
 }
 
 function formatSvgNumber(value) {
