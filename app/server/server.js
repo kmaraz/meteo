@@ -57,9 +57,10 @@ async function handleForecast(url, response, fetchImpl) {
   const lon = validateCoordinate(url.searchParams.get("lon"), "lon", -180, 180);
   const locationName = url.searchParams.get("locationName") || "Selected location";
   const view = url.searchParams.get("view") || "current";
-  const forecastUrl = buildOpenMeteoUrl({ lat, lon });
+  const model = url.searchParams.get("model") || undefined;
+  const forecastUrl = buildOpenMeteoUrl({ lat, lon, model });
   const openMeteo = await fetchJson(forecastUrl, fetchImpl);
-  sendJson(response, 200, normalizeOpenMeteoForecast(openMeteo, { lat, lon, locationName, view }));
+  sendJson(response, 200, normalizeOpenMeteoForecast(openMeteo, { lat, lon, locationName, view, model }));
 }
 
 async function handleGeocode(url, response, fetchImpl) {

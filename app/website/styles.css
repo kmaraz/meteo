@@ -265,11 +265,63 @@ h2 {
   font-weight: 700;
 }
 
+.sky-quality small {
+  color: #333333;
+  font-size: 12px;
+}
+
 .actions {
   display: flex;
-  justify-content: flex-end;
+  align-items: flex-end;
+  justify-content: space-between;
   gap: 12px;
   margin: 4px 0 10px;
+}
+
+.model-picker {
+  position: relative;
+  display: inline-block;
+  margin: 0 2px 0 0;
+}
+
+.model-picker select {
+  display: inline-block;
+  min-width: 250px;
+  height: 30px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  padding: 5px 30px 5px 10px;
+  appearance: none;
+  background:
+    linear-gradient(45deg, transparent 50%, #ffffff 50%) calc(100% - 15px) 12px / 5px 5px no-repeat,
+    linear-gradient(135deg, #ffffff 50%, transparent 50%) calc(100% - 10px) 12px / 5px 5px no-repeat,
+    #656565;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 18px;
+  text-align: center;
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.25);
+  vertical-align: middle;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.model-picker select:hover,
+.model-picker select:focus {
+  background:
+    linear-gradient(45deg, transparent 50%, #ffffff 50%) calc(100% - 15px) 12px / 5px 5px no-repeat,
+    linear-gradient(135deg, #ffffff 50%, transparent 50%) calc(100% - 10px) 12px / 5px 5px no-repeat,
+    #454545;
+  outline: 0;
+}
+
+.model-picker select option,
+.model-picker select optgroup {
+  background: #ffffff;
+  color: #333333;
+  text-align: left;
+  text-shadow: none;
 }
 
 .action-right {
@@ -629,6 +681,23 @@ h2 {
   #forecast-form button {
     grid-column: 1 / -1;
   }
+
+  .actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .model-picker {
+    min-width: 0;
+  }
+
+  .model-picker select {
+    width: 100%;
+  }
+
+  .action-right {
+    justify-content: flex-end;
+  }
 }
 
 @media (max-width: 520px) {
@@ -642,5 +711,9 @@ h2 {
 
   #forecast-form {
     grid-template-columns: 1fr;
+  }
+
+  .action-right button {
+    flex: 1 1 100%;
   }
 }

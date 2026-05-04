@@ -43,6 +43,9 @@
         <h2 id="forecast-meta">Loading current Open-Meteo forecast...</h2>
 
         <div class="actions">
+          <label class="model-picker" for="model-select">
+            <select id="model-select" name="model" aria-label="Forecast model"></select>
+          </label>
           <div class="action-right">
             <button type="button" class="switch" data-forecast-action="center-midnight">Center on Midnight</button>
             <button type="button" class="switch" data-forecast-action="center-midday">Center on Midday</button>
@@ -58,6 +61,6 @@
       </section>
     </main>
 
-    <script type="module" src="./script.js"></script>
+    <script type="module" src="./script.js?v=20260504-model-select"></script>
   </body>
 </html>

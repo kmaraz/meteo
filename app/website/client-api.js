@@ -3,23 +3,35 @@ import {
   buildOpenMeteoUrl,
   normalizeGeocodingResponse,
   normalizeOpenMeteoForecast,
-} from "./open-meteo.js";
+  normalizeForecastModel,
+} from "./open-meteo.js?v=20260504-model-select";
 
 export async function fetchForecastData(
-  { lat, lon, locationName, view },
+  { lat, lon, locationName, view, model },
   { baseUrl = window.location.href, fetchImpl = fetch } = {},
 ) {
-  const backendUrl = buildBackendUrl("api/forecast", baseUrl, { lat, lon, locationName, view });
+  const selectedModel = normalizeForecastModel(model);
+  const hasExplicitModel = model !== undefined && model !== null && model !== "";
+  const backendUrl = buildBackendUrl("api/forecast", baseUrl, {
+    lat,
+    lon,
+    locationName,
+    view,
+    model: hasExplicitModel ? selectedModel : undefined,
+  });
   try {
-    return await fetchJson(backendUrl, fetchImpl);
+    const forecast = await fetchJson(backendUrl, fetchImpl);
+    if (!hasExplicitModel || forecast.meta?.model === selectedModel) {
+      return forecast;
+    }
   } catch (error) {
     if (!canUseStaticFallback(error)) {
       throw error;
     }
   }
 
-  const openMeteo = await fetchJson(buildOpenMeteoUrl({ lat, lon }), fetchImpl);
-  return normalizeOpenMeteoForecast(openMeteo, { lat, lon, locationName, view });
+  const openMeteo = await fetchJson(buildOpenMeteoUrl({ lat, lon, model: selectedModel }), fetchImpl);
+  return normalizeOpenMeteoForecast(openMeteo, { lat, lon, locationName, view, model: selectedModel });
 }
 
 export async function fetchSlovakGeocoding(name, { baseUrl = window.location.href, fetchImpl = fetch } = {}) {
@@ -39,6 +51,9 @@ export async function fetchSlovakGeocoding(name, { baseUrl = window.location.hre
 function buildBackendUrl(path, baseUrl, params) {
   const url = new URL(path, baseUrl);
   for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === null || value === "") {
+      continue;
+    }
     url.searchParams.set(key, value);
   }
   return url;

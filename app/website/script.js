@@ -1,10 +1,11 @@
-import { fetchForecastData, fetchSlovakGeocoding } from "./client-api.js";
+import { fetchForecastData, fetchSlovakGeocoding } from "./client-api.js?v=20260504-model-select";
 import {
   forecastViewForAction,
   getDefaultLocation,
   moonLitPath,
   saveDefaultLocation,
-} from "./forecast-controls.js";
+} from "./forecast-controls.js?v=20260504-model-select";
+import { FORECAST_MODELS, forecastModelLabel, normalizeForecastModel } from "./open-meteo.js?v=20260504-model-select";
 
 const defaultLocation = {
   locationName: "Devínska Nová Ves, Okres Bratislava IV, Slovakia",
@@ -16,6 +17,7 @@ let forecastData = null;
 let expandedDayIndex = 0;
 let currentLocation = null;
 let currentView = "current";
+let currentModel = "best_match";
 let saveButtonResetTimer = null;
 
 const cloudColors = [
@@ -172,26 +174,29 @@ function updateForecastMeta() {
   document.querySelector("#forecast-meta").textContent =
     `Generated: ${generated}. Forecast: ${meta.forecastFrom} to ${meta.forecastTo}. Timezone: ${meta.timezone}.`;
   document.querySelector("#source-badge").innerHTML =
-    `<span aria-hidden="true">live</span> Forecast source: <strong>${meta.source}</strong>. Model: <strong>${meta.model}</strong>. Resolved grid: <strong>${meta.resolved.latitude}, ${meta.resolved.longitude}</strong>.`;
+    `<span aria-hidden="true">live</span> Forecast source: <strong>${meta.source}</strong>. Model: <strong>${meta.modelLabel || meta.model}</strong> <small>${meta.model}</small>. Resolved grid: <strong>${meta.resolved.latitude}, ${meta.resolved.longitude}</strong>.`;
   setStatus("Powered by Open-Meteo Weather API");
 }
 
 async function loadForecast({ lat, lon, locationName }, options = {}) {
   const view = options.view || currentView;
-  setStatus(`Loading ${forecastViewLabel(view)} forecast...`);
+  const model = normalizeForecastModel(options.model || currentModel);
+  setStatus(`Loading ${forecastViewLabel(view)} forecast with ${forecastModelLabel(model)}...`);
   document.querySelector("#forecast").setAttribute("aria-busy", "true");
 
-  forecastData = await fetchForecastData({ lat, lon, locationName, view });
+  forecastData = await fetchForecastData({ lat, lon, locationName, view, model });
   currentLocation = {
     lat: String(lat),
     lon: String(lon),
     locationName,
   };
   currentView = forecastData.meta.view || view;
+  currentModel = forecastData.meta.model || model;
   expandedDayIndex = 0;
   updateForecastMeta();
   renderForecast(0);
   updateActionButtons();
+  syncModelSelect();
   document.querySelector(".forecast-shell").scrollLeft = 0;
   document.querySelector("#forecast").setAttribute("aria-busy", "false");
 }
@@ -235,7 +240,7 @@ function markDefaultButtonSaved(button) {
 
 async function switchForecastView(view) {
   if (!currentLocation) return;
-  await loadForecast(currentLocation, { view });
+  await loadForecast(currentLocation, { view, model: currentModel });
   setStatus(`Centered forecast on ${forecastViewLabel(view)}`);
 }
 
@@ -259,6 +264,33 @@ function applyLocationInputs(location) {
   document.querySelector("#latitude").value = location.lat;
   document.querySelector("#longitude").value = location.lon;
   document.querySelector("#address").value = location.locationName;
+}
+
+function renderModelSelect() {
+  const select = document.querySelector("#model-select");
+  const groups = new Map();
+
+  FORECAST_MODELS.forEach((model) => {
+    if (!groups.has(model.group)) {
+      const optgroup = document.createElement("optgroup");
+      optgroup.label = model.group;
+      groups.set(model.group, optgroup);
+      select.append(optgroup);
+    }
+
+    const option = document.createElement("option");
+    option.value = model.value;
+    option.textContent = model.label;
+    groups.get(model.group).append(option);
+  });
+
+  syncModelSelect();
+}
+
+function syncModelSelect() {
+  const select = document.querySelector("#model-select");
+  select.value = currentModel;
+  select.title = forecastModelLabel(currentModel);
 }
 
 document.querySelector("#forecast").addEventListener("click", (event) => {
@@ -304,6 +336,19 @@ document.querySelector("#forecast-form").addEventListener("submit", async (event
   }
 });
 
+document.querySelector("#model-select").addEventListener("change", async (event) => {
+  currentModel = normalizeForecastModel(event.target.value);
+  if (!currentLocation) return;
+
+  try {
+    await loadForecast(currentLocation, { view: currentView, model: currentModel });
+    setStatus(`Forecast model changed to ${forecastModelLabel(currentModel)}`);
+  } catch (error) {
+    setStatus(error.message);
+    document.querySelector("#forecast").setAttribute("aria-busy", "false");
+  }
+});
+
 document.querySelector(".actions").addEventListener("click", async (event) => {
   const button = event.target.closest("[data-forecast-action]");
   const action = button?.dataset.forecastAction;
@@ -325,6 +370,7 @@ document.querySelector(".actions").addEventListener("click", async (event) => {
 const initialLocation = getDefaultLocation(window.localStorage, defaultLocation);
 currentLocation = initialLocation;
 applyLocationInputs(initialLocation);
+renderModelSelect();
 
 loadForecast(initialLocation, { view: "current" }).catch((error) => {
   setStatus(error.message);

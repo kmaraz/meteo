@@ -2,6 +2,30 @@ const OPEN_METEO_FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
 const OPEN_METEO_GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search";
 const DEFAULT_TIMEZONE = "Europe/Bratislava";
 const DEFAULT_MODEL = "best_match";
+export const FORECAST_MODELS = [
+  { group: "Automatic", value: "best_match", label: "Best Match" },
+  { group: "Central Europe", value: "icon_d2", label: "DWD ICON D2" },
+  { group: "Central Europe", value: "geosphere_arome_austria", label: "GeoSphere AROME Austria" },
+  { group: "Central Europe", value: "knmi_harmonie_arome_europe", label: "KNMI HARMONIE-AROME Europe" },
+  { group: "Central Europe", value: "dmi_harmonie_arome_europe", label: "DMI HARMONIE-AROME Europe" },
+  { group: "Europe", value: "icon_seamless", label: "DWD ICON Seamless" },
+  { group: "Europe", value: "icon_eu", label: "DWD ICON EU" },
+  { group: "Europe", value: "geosphere_seamless", label: "GeoSphere Seamless" },
+  { group: "Europe", value: "meteofrance_seamless", label: "Meteo-France Seamless" },
+  { group: "Europe", value: "meteofrance_arpege_europe", label: "Meteo-France ARPEGE Europe" },
+  { group: "Europe", value: "meteofrance_arpege_world", label: "Meteo-France ARPEGE World" },
+  { group: "Europe", value: "knmi_seamless", label: "KNMI Seamless" },
+  { group: "Europe", value: "dmi_seamless", label: "DMI Seamless" },
+  { group: "Europe", value: "ukmo_seamless", label: "UKMO Seamless" },
+  { group: "Global baseline", value: "ecmwf_ifs", label: "ECMWF IFS HRES 9 km" },
+  { group: "Global baseline", value: "ecmwf_ifs025", label: "ECMWF IFS 0.25" },
+  { group: "Global baseline", value: "ecmwf_aifs025", label: "ECMWF AIFS 0.25" },
+  { group: "Global baseline", value: "gfs_seamless", label: "NOAA GFS Seamless" },
+  { group: "Global baseline", value: "gfs_global", label: "NOAA GFS Global" },
+  { group: "Global baseline", value: "gfs_graphcast025", label: "NOAA GFS GraphCast" },
+  { group: "Global baseline", value: "ukmo_global_deterministic_10km", label: "UKMO Global 10 km" },
+];
+const FORECAST_MODEL_BY_VALUE = new Map(FORECAST_MODELS.map((model) => [model.value, model]));
 const VIEW_START_HOURS = new Map([
   ["midnight", 0],
   ["midday", 12],
@@ -95,13 +119,13 @@ const SUN_COLORS = {
   transit: "#F0707F",
 };
 
-export function buildOpenMeteoUrl({ lat, lon, timezone = DEFAULT_TIMEZONE }) {
+export function buildOpenMeteoUrl({ lat, lon, timezone = DEFAULT_TIMEZONE, model = DEFAULT_MODEL }) {
   const url = new URL(OPEN_METEO_FORECAST_URL);
   url.searchParams.set("latitude", formatCoordinate(lat));
   url.searchParams.set("longitude", formatCoordinate(lon));
   url.searchParams.set("timezone", timezone);
   url.searchParams.set("forecast_days", "8");
-  url.searchParams.set("models", DEFAULT_MODEL);
+  url.searchParams.set("models", normalizeForecastModel(model));
   url.searchParams.set("hourly", HOURLY_VARIABLES.join(","));
   url.searchParams.set("daily", DAILY_VARIABLES.join(","));
   return url;
@@ -121,6 +145,7 @@ export function normalizeOpenMeteoForecast(response, options) {
   const maxDays = options.maxDays ?? 7;
   const current = currentDateHour(options.now || new Date(), timezone);
   const view = normalizeForecastView(options.view);
+  const model = normalizeForecastModel(options.model);
   const startHour = view === "current" ? current.hour : VIEW_START_HOURS.get(view);
   const hourlyIndex = buildHourlyIndex(response.hourly);
   const days = response.daily.time.slice(0, maxDays).map((date) => {
@@ -144,7 +169,8 @@ export function normalizeOpenMeteoForecast(response, options) {
     meta: {
       generatedAt: new Date().toISOString(),
       source: "Open-Meteo",
-      model: DEFAULT_MODEL,
+      model,
+      modelLabel: forecastModelLabel(model),
       locationName: options.locationName || "Selected location",
       requested: {
         latitude: Number(options.lat),
@@ -166,6 +192,15 @@ export function normalizeOpenMeteoForecast(response, options) {
     hours: hourSequence(startHour),
     days,
   };
+}
+
+export function normalizeForecastModel(model) {
+  const value = String(model || DEFAULT_MODEL).trim();
+  return FORECAST_MODEL_BY_VALUE.has(value) ? value : DEFAULT_MODEL;
+}
+
+export function forecastModelLabel(model) {
+  return FORECAST_MODEL_BY_VALUE.get(normalizeForecastModel(model)).label;
 }
 
 export function normalizeGeocodingResponse(response) {

@@ -89,4 +89,68 @@ describe("fetchForecastData", () => {
     assert.equal(forecast.meta.locationName, "Devínska Nová Ves");
     assert.deepEqual(forecast.hours.slice(0, 4), ["12", "13", "14", "15"]);
   });
+
+  it("uses the selected forecast model for the local API and static Open-Meteo fallback", async () => {
+    const requestedUrls = [];
+    const fetchImpl = async (url) => {
+      requestedUrls.push(url.toString());
+      if (url.pathname === "/meteo/api/forecast") {
+        return jsonResponse({ message: "not found" }, 404);
+      }
+      return jsonResponse(sampleOpenMeteoResponse());
+    };
+
+    const forecast = await fetchForecastData(
+      {
+        lat: "48.21",
+        lon: "16.97",
+        locationName: "Devínska Nová Ves",
+        view: "current",
+        model: "geosphere_arome_austria",
+      },
+      {
+        baseUrl: "https://www.maraz.sk/meteo/",
+        fetchImpl,
+      },
+    );
+
+    assert.equal(new URL(requestedUrls[0]).searchParams.get("model"), "geosphere_arome_austria");
+    assert.equal(new URL(requestedUrls[1]).searchParams.get("models"), "geosphere_arome_austria");
+    assert.equal(forecast.meta.model, "geosphere_arome_austria");
+    assert.equal(forecast.meta.modelLabel, "GeoSphere AROME Austria");
+  });
+
+  it("falls back to direct Open-Meteo when the local API ignores the selected model", async () => {
+    const requestedUrls = [];
+    const fetchImpl = async (url) => {
+      requestedUrls.push(url.toString());
+      if (url.pathname === "/api/forecast") {
+        return jsonResponse({
+          meta: {
+            model: "best_match",
+          },
+        });
+      }
+      return jsonResponse(sampleOpenMeteoResponse());
+    };
+
+    const forecast = await fetchForecastData(
+      {
+        lat: "48.21",
+        lon: "16.97",
+        locationName: "Devínska Nová Ves",
+        view: "current",
+        model: "icon_d2",
+      },
+      {
+        baseUrl: "http://localhost:4173/",
+        fetchImpl,
+      },
+    );
+
+    assert.equal(new URL(requestedUrls[0]).searchParams.get("model"), "icon_d2");
+    assert.equal(new URL(requestedUrls[1]).searchParams.get("models"), "icon_d2");
+    assert.equal(forecast.meta.model, "icon_d2");
+    assert.equal(forecast.meta.modelLabel, "DWD ICON D2");
+  });
 });

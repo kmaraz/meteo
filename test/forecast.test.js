@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  FORECAST_MODELS,
   buildGeocodingUrl,
   buildOpenMeteoUrl,
   normalizeOpenMeteoForecast,
+  normalizeForecastModel,
 } from "../app/website/open-meteo.js";
 
 const hourlyVariables = [
@@ -128,6 +130,30 @@ describe("buildOpenMeteoUrl", () => {
     assert.deepEqual(requestedHourly, hourlyVariables);
     assert.equal(url.searchParams.get("daily"), "sunrise,sunset,daylight_duration");
   });
+
+  it("allows selecting an explicit Slovakia-suitable forecast model", () => {
+    const url = buildOpenMeteoUrl({ lat: 48.21, lon: 16.97, model: "icon_d2" });
+
+    assert.equal(url.searchParams.get("models"), "icon_d2");
+  });
+});
+
+describe("forecast models", () => {
+  it("exposes Slovak-region and global baseline models for the UI selector", () => {
+    const modelValues = FORECAST_MODELS.map((model) => model.value);
+
+    assert.deepEqual(
+      ["best_match", "icon_d2", "geosphere_arome_austria", "ecmwf_ifs", "gfs_global"].map((value) =>
+        modelValues.includes(value),
+      ),
+      [true, true, true, true, true],
+    );
+  });
+
+  it("normalizes unknown model values to best_match", () => {
+    assert.equal(normalizeForecastModel("not-a-model"), "best_match");
+    assert.equal(normalizeForecastModel("ecmwf_ifs"), "ecmwf_ifs");
+  });
 });
 
 describe("buildGeocodingUrl", () => {
@@ -149,11 +175,14 @@ describe("normalizeOpenMeteoForecast", () => {
       lat: 48.21,
       lon: 16.97,
       locationName: "Devínska Nová Ves",
+      model: "icon_eu",
       maxDays: 1,
       view: "night",
     });
 
     assert.equal(normalized.meta.locationName, "Devínska Nová Ves");
+    assert.equal(normalized.meta.model, "icon_eu");
+    assert.equal(normalized.meta.modelLabel, "DWD ICON EU");
     assert.equal(normalized.meta.requested.latitude, 48.21);
     assert.equal(normalized.meta.resolved.longitude, 16.98);
     assert.equal(normalized.meta.timezone, "Europe/Bratislava");
