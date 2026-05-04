@@ -50,114 +50,6 @@ input {
   margin: 0 auto;
 }
 
-.page-header {
-  background: var(--black);
-  border-bottom: 1px solid var(--light-blue);
-}
-
-.header-top {
-  display: flex;
-  min-height: 120px;
-  align-items: center;
-  justify-content: flex-start;
-  padding: 10px 0;
-}
-
-.co-logo {
-  display: inline-flex;
-  width: auto;
-  align-items: center;
-  padding: 10px;
-  background: #151515;
-}
-
-.logo-icons {
-  display: grid;
-  grid-template-columns: repeat(3, 52px);
-  gap: 6px;
-}
-
-.logo-tile {
-  position: relative;
-  display: block;
-  height: 52px;
-  background: var(--mid-blue);
-  overflow: hidden;
-}
-
-.logo-tile.sun::before {
-  position: absolute;
-  width: 24px;
-  height: 24px;
-  left: 14px;
-  top: 14px;
-  border-radius: 50%;
-  background: #ffffff;
-  box-shadow:
-    0 -13px 0 -9px #ffffff,
-    0 13px 0 -9px #ffffff,
-    -13px 0 0 -9px #ffffff,
-    13px 0 0 -9px #ffffff,
-    9px 9px 0 -9px #ffffff,
-    -9px -9px 0 -9px #ffffff,
-    9px -9px 0 -9px #ffffff,
-    -9px 9px 0 -9px #ffffff;
-  content: "";
-}
-
-.logo-tile.cloud {
-  background: #08649b;
-}
-
-.logo-tile.cloud::before,
-.logo-tile.cloud::after {
-  position: absolute;
-  content: "";
-  background: #ffffff;
-}
-
-.logo-tile.cloud::before {
-  width: 35px;
-  height: 14px;
-  left: 9px;
-  top: 27px;
-  border-radius: 12px;
-}
-
-.logo-tile.cloud::after {
-  width: 20px;
-  height: 20px;
-  left: 15px;
-  top: 17px;
-  border-radius: 50%;
-  box-shadow: 14px 7px 0 -3px #ffffff;
-}
-
-.logo-tile.moon {
-  background: #333333;
-}
-
-.logo-tile.moon::before {
-  position: absolute;
-  width: 30px;
-  height: 30px;
-  left: 15px;
-  top: 10px;
-  border-radius: 50%;
-  background: #ffffff;
-  box-shadow: 10px 0 0 0 #333333;
-  content: "";
-}
-
-.logo-tile.moon::after {
-  position: absolute;
-  right: 10px;
-  bottom: 10px;
-  color: #ffffff;
-  font-size: 18px;
-  content: "*";
-}
-
 .address-panel {
   position: relative;
   z-index: 2;
@@ -785,11 +677,6 @@ h2 {
 }
 
 @media (max-width: 900px) {
-  .header-top {
-    flex-direction: column;
-    gap: 16px;
-  }
-
   #forecast-form {
     grid-template-columns: 1fr 1fr;
   }
