@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Clear Outside Local UX Copy</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <header class="page-header">
+      <div class="container header-top">
+        <a class="co-logo" href="#" aria-label="Clear Outside home">
+          <span class="logo-icons" aria-hidden="true">
+            <span class="logo-tile sun"></span>
+            <span class="logo-tile cloud"></span>
+            <span class="logo-tile moon"></span>
+          </span>
+        </a>
+      </div>
+    </header>
+
+    <main>
+      <section class="container address-panel" aria-label="Forecast lookup">
+        <form id="forecast-form">
+          <input id="address" name="address" type="text" placeholder="Lookup Address / Town / Postcode" autocomplete="off">
+          <span class="or-label">or enter</span>
+          <input id="latitude" name="latitude" type="text" value="48.21" aria-label="Latitude">
+          <input id="longitude" name="longitude" type="text" value="16.97" aria-label="Longitude">
+          <button type="submit">Get Forecast <span aria-hidden="true" class="button-cloud"></span></button>
+        </form>
+      </section>
+
+      <section class="container content-panel">
+        <h1 id="forecast-title">Forecast for Dev&iacute;nska Nov&aacute; Ves, Okres Bratislava IV, Slovakia (48.21,16.97)</h1>
+
+        <div id="source-badge" class="sky-quality" aria-label="Forecast source">
+          <span aria-hidden="true">live</span>
+          Forecast source: <strong>Open-Meteo</strong>.
+          Model: <strong>best_match</strong>.
+          Score uses cloud cover, precipitation, visibility, and wind.
+        </div>
+
+        <h2 id="forecast-meta">Loading current Open-Meteo forecast...</h2>
+
+        <div class="actions">
+          <div class="action-right">
+            <button type="button" class="switch" data-forecast-action="center-midnight">Center on Midnight</button>
+            <button type="button" class="switch" data-forecast-action="center-midday">Center on Midday</button>
+            <button type="button" class="default" data-forecast-action="set-default">Set as Default Location</button>
+          </div>
+        </div>
+
+        <section class="forecast-shell" aria-label="Astronomy weather forecast">
+          <div id="forecast"></div>
+        </section>
+
+        <p id="forecast-status" class="provider" aria-live="polite">Powered by Open-Meteo Weather API</p>
+      </section>
+    </main>
+
+    <script type="module" src="./script.js"></script>
+  </body>
+</html>
