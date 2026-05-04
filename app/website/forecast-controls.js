@@ -3,6 +3,7 @@ const ACTION_VIEWS = new Map([
   ["center-midnight", "midnight"],
   ["center-midday", "midday"],
 ]);
+const URL_VIEWS = new Set(["current", "midnight", "midday"]);
 
 export function getDefaultLocation(storage, fallback) {
   try {
@@ -28,6 +29,31 @@ export function saveDefaultLocation(storage, forecastData) {
 
 export function forecastViewForAction(action) {
   return ACTION_VIEWS.get(action) || null;
+}
+
+export function forecastViewFromUrl(searchParams) {
+  const view = searchParams.get("view");
+  return URL_VIEWS.has(view) ? view : "current";
+}
+
+export function forecastLocationFromUrl(searchParams, fallback) {
+  const lat = coordinateFromUrl(searchParams.get("lat"), -90, 90);
+  const lon = coordinateFromUrl(searchParams.get("lon"), -180, 180);
+  if (!lat || !lon) {
+    return fallback;
+  }
+
+  return { locationName: `${lat}, ${lon}`, lat, lon };
+}
+
+export function buildForecastShareUrl(baseUrl, { lat, lon, model, view }) {
+  const url = new URL(baseUrl);
+  url.search = "";
+  url.searchParams.set("lat", String(lat));
+  url.searchParams.set("lon", String(lon));
+  url.searchParams.set("model", String(model));
+  url.searchParams.set("view", URL_VIEWS.has(view) ? view : "current");
+  return url.toString();
 }
 
 export function moonLitPath({ illumination, waxing }) {
@@ -57,6 +83,14 @@ function isLocation(value) {
       Number.isFinite(Number(value.lat)) &&
       Number.isFinite(Number(value.lon)),
   );
+}
+
+function coordinateFromUrl(value, min, max) {
+  const coordinate = value?.trim();
+  if (!coordinate) return null;
+  const number = Number(coordinate);
+  if (!Number.isFinite(number) || number < min || number > max) return null;
+  return coordinate;
 }
 
 function formatSvgNumber(value) {

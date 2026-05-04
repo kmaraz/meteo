@@ -1,11 +1,14 @@
-import { fetchForecastData, fetchSlovakGeocoding } from "./client-api.js?v=20260504-model-select";
+import { fetchForecastData, fetchSlovakGeocoding } from "./client-api.js?v=20260504-share-url";
 import {
+  buildForecastShareUrl,
+  forecastLocationFromUrl,
   forecastViewForAction,
+  forecastViewFromUrl,
   getDefaultLocation,
   moonLitPath,
   saveDefaultLocation,
-} from "./forecast-controls.js?v=20260504-model-select";
-import { FORECAST_MODELS, forecastModelLabel, normalizeForecastModel } from "./open-meteo.js?v=20260504-model-select";
+} from "./forecast-controls.js?v=20260504-share-url";
+import { FORECAST_MODELS, forecastModelLabel, normalizeForecastModel } from "./open-meteo.js?v=20260504-share-url";
 
 const defaultLocation = {
   locationName: "Devínska Nová Ves, Okres Bratislava IV, Slovakia",
@@ -197,6 +200,7 @@ async function loadForecast({ lat, lon, locationName }, options = {}) {
   renderForecast(0);
   updateActionButtons();
   syncModelSelect();
+  syncShareUrl();
   document.querySelector(".forecast-shell").scrollLeft = 0;
   document.querySelector("#forecast").setAttribute("aria-busy", "false");
 }
@@ -293,6 +297,16 @@ function syncModelSelect() {
   select.title = forecastModelLabel(currentModel);
 }
 
+function syncShareUrl() {
+  if (!currentLocation) return;
+  const shareUrl = buildForecastShareUrl(window.location.href, {
+    ...currentLocation,
+    model: currentModel,
+    view: currentView,
+  });
+  window.history.replaceState(null, "", shareUrl);
+}
+
 document.querySelector("#forecast").addEventListener("click", (event) => {
   const button = event.target.closest(".day-date");
   if (!button) return;
@@ -367,12 +381,16 @@ document.querySelector(".actions").addEventListener("click", async (event) => {
   }
 });
 
-const initialLocation = getDefaultLocation(window.localStorage, defaultLocation);
+const initialSearchParams = new URLSearchParams(window.location.search);
+const savedLocation = getDefaultLocation(window.localStorage, defaultLocation);
+const initialLocation = forecastLocationFromUrl(initialSearchParams, savedLocation);
+currentView = forecastViewFromUrl(initialSearchParams);
+currentModel = normalizeForecastModel(initialSearchParams.get("model") || currentModel);
 currentLocation = initialLocation;
 applyLocationInputs(initialLocation);
 renderModelSelect();
 
-loadForecast(initialLocation, { view: "current" }).catch((error) => {
+loadForecast(initialLocation, { view: currentView, model: currentModel }).catch((error) => {
   setStatus(error.message);
   document.querySelector("#forecast").setAttribute("aria-busy", "false");
 });

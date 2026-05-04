@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  buildForecastShareUrl,
+  forecastLocationFromUrl,
   forecastViewForAction,
+  forecastViewFromUrl,
   getDefaultLocation,
   moonLitPath,
   saveDefaultLocation,
@@ -57,6 +60,48 @@ describe("forecast action views", () => {
     assert.equal(forecastViewForAction("center-midday"), "midday");
     assert.equal(forecastViewForAction("set-default"), null);
     assert.equal(forecastViewForAction("unknown"), null);
+  });
+
+  it("reads forecast view mode from URL parameters", () => {
+    assert.equal(forecastViewFromUrl(new URLSearchParams("view=midnight")), "midnight");
+    assert.equal(forecastViewFromUrl(new URLSearchParams("view=midday")), "midday");
+    assert.equal(forecastViewFromUrl(new URLSearchParams("view=current")), "current");
+    assert.equal(forecastViewFromUrl(new URLSearchParams("view=unknown")), "current");
+    assert.equal(forecastViewFromUrl(new URLSearchParams()), "current");
+  });
+});
+
+describe("forecast URL state", () => {
+  it("reads shared forecast location from URL coordinates", () => {
+    const fallback = { locationName: "Fallback", lat: "48.21", lon: "16.97" };
+    const location = forecastLocationFromUrl(new URLSearchParams("lat=49.001&lon=20.002"), fallback);
+
+    assert.deepEqual(location, {
+      locationName: "49.001, 20.002",
+      lat: "49.001",
+      lon: "20.002",
+    });
+  });
+
+  it("falls back when shared URL coordinates are invalid", () => {
+    const fallback = { locationName: "Fallback", lat: "48.21", lon: "16.97" };
+
+    assert.deepEqual(forecastLocationFromUrl(new URLSearchParams("lat=91&lon=20"), fallback), fallback);
+    assert.deepEqual(forecastLocationFromUrl(new URLSearchParams("lat=49"), fallback), fallback);
+  });
+
+  it("builds a share URL with location, model, and view state", () => {
+    const url = buildForecastShareUrl("https://www.maraz.sk/meteo/?old=1#forecast", {
+      lat: "48.21",
+      lon: "16.97",
+      model: "icon_d2",
+      view: "midday",
+    });
+
+    assert.equal(
+      url,
+      "https://www.maraz.sk/meteo/?lat=48.21&lon=16.97&model=icon_d2&view=midday#forecast",
+    );
   });
 });
 
