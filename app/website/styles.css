@@ -250,26 +250,6 @@ h2 {
   font-size: 16px;
 }
 
-.sky-quality {
-  display: inline-block;
-  border: 1px solid #111111;
-  border-radius: 4px;
-  padding: 8px 12px;
-  background: #e4e437;
-  color: #111111;
-  font-size: 14px;
-}
-
-.sky-quality span {
-  margin-right: 8px;
-  font-weight: 700;
-}
-
-.sky-quality small {
-  color: #333333;
-  font-size: 12px;
-}
-
 .actions {
   display: flex;
   align-items: flex-end;

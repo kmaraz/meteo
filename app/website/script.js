@@ -176,8 +176,6 @@ function updateForecastMeta() {
     `Forecast for ${meta.locationName} (${meta.requested.latitude},${meta.requested.longitude})`;
   document.querySelector("#forecast-meta").textContent =
     `Generated: ${generated}. Forecast: ${meta.forecastFrom} to ${meta.forecastTo}. Timezone: ${meta.timezone}.`;
-  document.querySelector("#source-badge").innerHTML =
-    `<span aria-hidden="true">live</span> Forecast source: <strong>${meta.source}</strong>. Model: <strong>${meta.modelLabel || meta.model}</strong> <small>${meta.model}</small>. Resolved grid: <strong>${meta.resolved.latitude}, ${meta.resolved.longitude}</strong>.`;
   setStatus("Powered by Open-Meteo Weather API");
 }
 
