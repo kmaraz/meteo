@@ -10,6 +10,7 @@ import {
   locationFromMapPoint,
   moonLitPath,
   saveDefaultLocation,
+  visibleForecastDetailRows,
 } from "../app/website/forecast-controls.js";
 
 function memoryStorage(initial = {}) {
@@ -113,6 +114,24 @@ describe("map point forecast location", () => {
       lat: "48.14816",
       lon: "17.10674",
     });
+  });
+});
+
+describe("forecast detail row visibility", () => {
+  it("hides low-value rows from rendering without removing source data", () => {
+    const rows = [
+      { label: "Cloud Cover" },
+      { label: "Pressure (hPa)" },
+      { label: "Chance of Frost" },
+      { label: "Precipitation Type" },
+      { label: "Wind Speed (m/s)" },
+    ];
+
+    assert.deepEqual(
+      visibleForecastDetailRows(rows).map((row) => row.label),
+      ["Cloud Cover", "Wind Speed (m/s)"],
+    );
+    assert.equal(rows.length, 5);
   });
 });
 

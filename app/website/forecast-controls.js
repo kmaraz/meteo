@@ -4,6 +4,7 @@ const ACTION_VIEWS = new Map([
   ["center-midday", "midday"],
 ]);
 const URL_VIEWS = new Set(["current", "midnight", "midday"]);
+const HIDDEN_DETAIL_ROW_LABELS = new Set(["Pressure (hPa)", "Chance of Frost", "Precipitation Type"]);
 
 export function getDefaultLocation(storage, fallback) {
   try {
@@ -64,6 +65,10 @@ export function locationFromMapPoint(point) {
     lat,
     lon,
   };
+}
+
+export function visibleForecastDetailRows(rows) {
+  return rows.filter((row) => !HIDDEN_DETAIL_ROW_LABELS.has(row.label));
 }
 
 export function moonLitPath({ illumination, waxing }) {

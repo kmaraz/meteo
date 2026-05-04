@@ -8,7 +8,8 @@ import {
   locationFromMapPoint,
   moonLitPath,
   saveDefaultLocation,
-} from "./forecast-controls.js?v=20260504-map-picker";
+  visibleForecastDetailRows,
+} from "./forecast-controls.js?v=20260504-hide-detail-rows";
 import { FORECAST_MODELS, forecastModelLabel, normalizeForecastModel } from "./open-meteo.js?v=20260504-map-picker";
 
 const defaultLocation = {
@@ -87,7 +88,7 @@ function renderHours(day) {
 }
 
 function renderDetailRows(day) {
-  return day.detailRows
+  return visibleForecastDetailRows(day.detailRows)
     .map((row) => {
       const tall = row.type === "wind" ? " tall" : "";
       const values = row.values
