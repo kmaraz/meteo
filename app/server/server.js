@@ -10,7 +10,7 @@ import {
   normalizeGeocodingResponse,
   normalizeOpenMeteoForecast,
   validateCoordinate,
-} from "./open-meteo.js";
+} from "../website/open-meteo.js";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const STATIC_ROOT = resolve(__dirname, "../website");

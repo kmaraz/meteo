@@ -1,3 +1,4 @@
+import { fetchForecastData, fetchSlovakGeocoding } from "./client-api.js";
 import {
   forecastViewForAction,
   getDefaultLocation,
@@ -179,19 +180,8 @@ async function loadForecast({ lat, lon, locationName }, options = {}) {
   const view = options.view || currentView;
   setStatus(`Loading ${forecastViewLabel(view)} forecast...`);
   document.querySelector("#forecast").setAttribute("aria-busy", "true");
-  const url = new URL("/api/forecast", window.location.origin);
-  url.searchParams.set("lat", lat);
-  url.searchParams.set("lon", lon);
-  url.searchParams.set("locationName", locationName);
-  url.searchParams.set("view", view);
 
-  const response = await fetch(url);
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    throw new Error(body.message || `Forecast request failed with ${response.status}`);
-  }
-
-  forecastData = await response.json();
+  forecastData = await fetchForecastData({ lat, lon, locationName, view });
   currentLocation = {
     lat: String(lat),
     lon: String(lon),
@@ -207,14 +197,7 @@ async function loadForecast({ lat, lon, locationName }, options = {}) {
 }
 
 async function geocodeSlovakLocation(name) {
-  const url = new URL("/api/geocode", window.location.origin);
-  url.searchParams.set("name", name);
-  const response = await fetch(url);
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    throw new Error(body.message || `Geocoding request failed with ${response.status}`);
-  }
-  const data = await response.json();
+  const data = await fetchSlovakGeocoding(name);
   if (!data.results.length) {
     throw new Error(`No Slovak location found for "${name}"`);
   }

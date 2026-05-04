@@ -5,7 +5,7 @@ import {
   buildGeocodingUrl,
   buildOpenMeteoUrl,
   normalizeOpenMeteoForecast,
-} from "../app/server/open-meteo.js";
+} from "../app/website/open-meteo.js";
 
 const hourlyVariables = [
   "temperature_2m",
