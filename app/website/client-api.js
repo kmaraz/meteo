@@ -8,7 +8,7 @@ import {
   normalizeOpenMeteoForecast,
   normalizeForecastModel,
   normalizeReverseGeocodingResponse,
-} from "./open-meteo.js?v=20260505-reverse-geocode-fallback";
+} from "./open-meteo.js?v=20260505-best-night";
 
 const reverseGeocodingCache = new Map();
 

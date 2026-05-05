@@ -127,7 +127,7 @@ describe("buildOpenMeteoUrl", () => {
     assert.equal(url.searchParams.get("latitude"), "48.21");
     assert.equal(url.searchParams.get("longitude"), "16.97");
     assert.equal(url.searchParams.get("timezone"), "Europe/Bratislava");
-    assert.equal(url.searchParams.get("forecast_days"), "8");
+    assert.equal(url.searchParams.get("forecast_days"), "16");
     assert.equal(url.searchParams.get("models"), "best_match");
 
     const requestedHourly = url.searchParams.get("hourly").split(",");
@@ -361,4 +361,69 @@ describe("normalizeOpenMeteoForecast", () => {
     assert.equal(midday.days[0].lightSlots[8], "dusk");
     assert.equal(midday.days[0].lightSlots[17], "dawn");
   });
+
+  it("scores astrophotography nights using dark clear forecast hours", () => {
+    const normalized = normalizeOpenMeteoForecast(sampleAstroNightResponse(), {
+      lat: 48.21,
+      lon: 16.97,
+      locationName: "Devínska Nová Ves",
+      maxDays: 3,
+      view: "night",
+      now: "2026-01-10T12:00:00.000Z",
+    });
+
+    assert.equal(normalized.days.length, 3);
+    assert.equal(normalized.bestNight.dayIndex, 1);
+    assert.ok(normalized.days[1].astro.score > normalized.days[0].astro.score);
+    assert.ok(normalized.days[1].astro.score > normalized.days[2].astro.score);
+    assert.ok(normalized.days[1].astro.darkHours >= 6);
+    assert.ok(normalized.days[1].astro.goodDarkHours >= 6);
+    assert.ok(normalized.days[1].astro.averageCloud <= 10);
+    assert.match(normalized.days[1].astro.bestWindow, /^22-0[0-9]$/);
+  });
 });
+
+function sampleAstroNightResponse() {
+  const dates = ["2026-01-10", "2026-01-11", "2026-01-12", "2026-01-13"];
+  const times = dates.flatMap((date) =>
+    Array.from({ length: 24 }, (_, hour) => `${date}T${String(hour).padStart(2, "0")}:00`),
+  );
+  const isBestNight = (time) => time >= "2026-01-11T22:00" && time <= "2026-01-12T05:00";
+  const isPoorNight = (time) => time >= "2026-01-12T22:00" && time <= "2026-01-13T05:00";
+  const cloudCover = times.map((time) => (isBestNight(time) ? 5 : isPoorNight(time) ? 95 : 70));
+  const lowCloudCover = times.map((time) => (isBestNight(time) ? 0 : isPoorNight(time) ? 80 : 55));
+
+  return {
+    latitude: 48.2,
+    longitude: 16.98,
+    elevation: 162,
+    timezone: "Europe/Bratislava",
+    timezone_abbreviation: "CET",
+    utc_offset_seconds: 3600,
+    hourly: {
+      time: times,
+      temperature_2m: Array(times.length).fill(1),
+      apparent_temperature: Array(times.length).fill(-1),
+      relative_humidity_2m: Array(times.length).fill(60),
+      dew_point_2m: Array(times.length).fill(-3),
+      precipitation: Array(times.length).fill(0),
+      precipitation_probability: Array(times.length).fill(0),
+      precipitation_type: Array(times.length).fill(0),
+      weather_code: Array(times.length).fill(0),
+      cloud_cover: cloudCover,
+      cloud_cover_low: lowCloudCover,
+      cloud_cover_mid: cloudCover,
+      cloud_cover_high: cloudCover,
+      visibility: Array(times.length).fill(12000),
+      wind_speed_10m: Array(times.length).fill(6),
+      wind_direction_10m: Array(times.length).fill(140),
+      pressure_msl: Array(times.length).fill(1020),
+    },
+    daily: {
+      time: dates,
+      sunrise: dates.map((date) => `${date}T08:00`),
+      sunset: dates.map((date) => `${date}T16:10`),
+      daylight_duration: Array(dates.length).fill(29400),
+    },
+  };
+}

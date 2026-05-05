@@ -9,6 +9,7 @@ describe("website markup", () => {
     assert.doesNotMatch(indexHtml, /class="page-header"/);
     assert.doesNotMatch(indexHtml, /class="co-logo"/);
     assert.match(indexHtml, /id="forecast-form"/);
+    assert.match(indexHtml, /id="pick-best-night"/);
   });
 
   it("renders a startup loading state before JavaScript resolves the forecast location", () => {

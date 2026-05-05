@@ -60,7 +60,7 @@ input {
 
 #forecast-form {
   display: grid;
-  grid-template-columns: 184px 184px max-content max-content;
+  grid-template-columns: 184px 184px max-content max-content max-content;
   gap: 10px;
   align-items: center;
   justify-content: start;
@@ -79,7 +79,8 @@ input {
   color: #929292;
 }
 
-#forecast-form button[type="submit"] {
+#forecast-form button[type="submit"],
+#forecast-form .best-night-trigger {
   display: inline-flex;
   height: 46px;
   align-items: center;
@@ -90,10 +91,17 @@ input {
   padding: 0 10px 0 16px;
   width: max-content;
   max-width: 100%;
-  background: var(--blue);
   color: #ffffff;
   font-weight: 700;
   cursor: pointer;
+}
+
+#forecast-form button[type="submit"] {
+  background: var(--blue);
+}
+
+#forecast-form .best-night-trigger {
+  background: var(--black);
 }
 
 #forecast-form .map-picker-trigger {
@@ -146,6 +154,20 @@ input {
   top: 0;
   border-radius: 50%;
   box-shadow: 14px 8px 0 -5px #ffffff;
+}
+
+.button-star {
+  position: relative;
+  width: 22px;
+  height: 22px;
+}
+
+.button-star::before {
+  position: absolute;
+  inset: 2px;
+  background: #ffffff;
+  clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 56%, 79% 91%, 50% 69%, 21% 91%, 32% 56%, 2% 35%, 39% 35%);
+  content: "";
 }
 
 .content-panel {
@@ -298,6 +320,16 @@ h2 {
   margin-bottom: 5px;
 }
 
+.forecast-day.best-night {
+  position: relative;
+  outline: 3px solid #2f8f46;
+  outline-offset: 2px;
+}
+
+.forecast-day.best-night .day-date {
+  background: #0f5f3b;
+}
+
 .day-date {
   position: relative;
   min-height: 90px;
@@ -317,6 +349,21 @@ h2 {
   border-left: 10px solid transparent;
   border-bottom: 10px solid var(--light-blue);
   content: "";
+}
+
+.best-night-pill {
+  display: inline-flex;
+  min-height: 18px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 3px;
+  border-radius: 3px;
+  padding: 2px 5px;
+  background: #ffffff;
+  color: #0f5f3b;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .day-name {
@@ -380,6 +427,41 @@ h2 {
   color: #ffffff;
   font-size: 11px;
   line-height: 14px;
+}
+
+.astro-score {
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: center;
+  gap: 1px 6px;
+  margin-top: 4px;
+  color: #dcefff;
+  font-size: 10px;
+  line-height: 12px;
+}
+
+.astro-score strong {
+  color: #ffffff;
+  font-size: 15px;
+  line-height: 12px;
+}
+
+.astro-score-label {
+  color: var(--light-blue);
+  font-weight: 700;
+}
+
+.astro-score--excellent .astro-score-label,
+.astro-score--good .astro-score-label {
+  color: var(--green);
+}
+
+.astro-score--fair .astro-score-label {
+  color: var(--amber);
+}
+
+.astro-score--poor .astro-score-label {
+  color: var(--red);
 }
 
 .hour-block {
@@ -762,7 +844,8 @@ h2 {
   }
 
   #forecast-form .map-picker-trigger,
-  #forecast-form button[type="submit"] {
+  #forecast-form button[type="submit"],
+  #forecast-form .best-night-trigger {
     grid-column: 1 / -1;
   }
 

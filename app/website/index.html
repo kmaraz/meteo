@@ -15,6 +15,7 @@
           <input id="longitude" name="longitude" type="text" aria-label="Longitude" placeholder="Longitude">
           <button id="open-map-picker" class="map-picker-trigger" type="button" aria-haspopup="dialog">or select on map</button>
           <button type="submit">Get Forecast <span aria-hidden="true" class="button-cloud"></span></button>
+          <button id="pick-best-night" class="best-night-trigger" type="button">Pick Best Night <span aria-hidden="true" class="button-star"></span></button>
         </form>
       </section>
 
@@ -63,6 +64,6 @@
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script type="module" src="./script.js?v=20260505-reverse-geocode-fallback"></script>
+    <script type="module" src="./script.js?v=20260505-best-night"></script>
   </body>
 </html>

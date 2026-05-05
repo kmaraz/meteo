@@ -69,6 +69,7 @@ describe("forecast action views", () => {
   it("reads forecast view mode from URL parameters", () => {
     assert.equal(forecastViewFromUrl(new URLSearchParams("view=midnight")), "midnight");
     assert.equal(forecastViewFromUrl(new URLSearchParams("view=midday")), "midday");
+    assert.equal(forecastViewFromUrl(new URLSearchParams("view=night")), "night");
     assert.equal(forecastViewFromUrl(new URLSearchParams("view=current")), "current");
     assert.equal(forecastViewFromUrl(new URLSearchParams("view=unknown")), "current");
     assert.equal(forecastViewFromUrl(new URLSearchParams()), "current");
@@ -135,12 +136,12 @@ describe("forecast URL state", () => {
       lat: "48.21",
       lon: "16.97",
       model: "icon_d2",
-      view: "midday",
+      view: "night",
     });
 
     assert.equal(
       url,
-      "https://www.maraz.sk/meteo/?lat=48.21&lon=16.97&model=icon_d2&view=midday#forecast",
+      "https://www.maraz.sk/meteo/?lat=48.21&lon=16.97&model=icon_d2&view=night#forecast",
     );
   });
 });

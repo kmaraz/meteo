@@ -4,6 +4,10 @@ const NOMINATIM_REVERSE_GEOCODING_URL = "https://nominatim.openstreetmap.org/rev
 const BIGDATACLOUD_REVERSE_GEOCODING_URL = "https://api.bigdatacloud.net/data/reverse-geocode-client";
 const DEFAULT_TIMEZONE = "Europe/Bratislava";
 const DEFAULT_MODEL = "best_match";
+const FORECAST_DAYS = 16;
+const ASTRONOMICAL_DARK_SUN_ALTITUDE = -18;
+const ASTRONOMICAL_DARK_MARGIN_MINUTES = 90;
+const GOOD_ASTRO_HOUR_SCORE = 75;
 export const FORECAST_MODELS = [
   { group: "Automatic", value: "best_match", label: "Best Match" },
   { group: "Central Europe", value: "icon_d2", label: "DWD ICON D2" },
@@ -126,7 +130,7 @@ export function buildOpenMeteoUrl({ lat, lon, timezone = DEFAULT_TIMEZONE, model
   url.searchParams.set("latitude", formatCoordinate(lat));
   url.searchParams.set("longitude", formatCoordinate(lon));
   url.searchParams.set("timezone", timezone);
-  url.searchParams.set("forecast_days", "8");
+  url.searchParams.set("forecast_days", String(FORECAST_DAYS));
   url.searchParams.set("models", normalizeForecastModel(model));
   url.searchParams.set("hourly", HOURLY_VARIABLES.join(","));
   url.searchParams.set("daily", DAILY_VARIABLES.join(","));
@@ -163,15 +167,22 @@ export function buildBigDataCloudReverseGeocodingUrl({ lat, lon }) {
 
 export function normalizeOpenMeteoForecast(response, options) {
   const timezone = response.timezone || DEFAULT_TIMEZONE;
-  const maxDays = options.maxDays ?? 7;
+  const maxDays = options.maxDays ?? FORECAST_DAYS;
   const current = currentDateHour(options.now || new Date(), timezone);
   const view = normalizeForecastView(options.view);
   const model = normalizeForecastModel(options.model);
   const startHour = view === "current" ? current.hour : VIEW_START_HOURS.get(view);
   const hourlyIndex = buildHourlyIndex(response.hourly);
-  const days = response.daily.time.slice(0, maxDays).map((date) => {
+  const astronomy = {
+    lat: Number(options.lat),
+    lon: Number(options.lon),
+    utcOffsetSeconds: Number.isFinite(response.utc_offset_seconds) ? response.utc_offset_seconds : null,
+  };
+  const days = response.daily.time.slice(0, maxDays).map((date, index) => {
     const { slots, slotKeys } = buildObservingSlots(date, hourlyIndex, startHour);
+    const night = buildObservingSlots(date, hourlyIndex, VIEW_START_HOURS.get("night"));
     const currentHourIndex = slotKeys.indexOf(current.key);
+    const moon = approximateMoon(date);
     return {
       id: date,
       name: weekdayName(date, timezone),
@@ -179,12 +190,14 @@ export function normalizeOpenMeteoForecast(response, options) {
       currentHourIndex,
       lightSlots: lightSlots(slotKeys, response.daily),
       daylightGradient: daylightGradient(slotKeys, response.daily),
-      moon: approximateMoon(date),
+      moon,
       sun: dailySun(response.daily, date),
+      astro: astroNightScore(night.slots, night.slotKeys, response.daily, moon, index, astronomy),
       hours: slots.map((slot) => observingClass(slot)),
       detailRows: detailRows(slots),
     };
   });
+  const bestNight = bestAstroNight(days);
 
   return {
     meta: {
@@ -209,7 +222,9 @@ export function normalizeOpenMeteoForecast(response, options) {
       currentHour: padHour(current.hour),
       forecastFrom: days[0]?.id,
       forecastTo: days.at(-1)?.id,
+      bestNight,
     },
+    bestNight,
     hours: hourSequence(startHour),
     days,
   };
@@ -633,6 +648,258 @@ function nullableTransform(value, transform) {
 
 function nullableClass(value, classify) {
   return value === null ? "none" : classify(value);
+}
+
+function astroNightScore(slots, slotKeys, daily, moon, leadDays, astronomy) {
+  const darkHours = slots
+    .map((slot, index) => {
+      const dark = isAstronomicalDark(slotKeys[index], daily, astronomy);
+      return {
+        key: slotKeys[index],
+        dark,
+        primaryNight: index < 12,
+        score: dark ? astroHourScore(slot, moon) : 0,
+        cloud: slot.cloud_cover ?? 100,
+      };
+    })
+    .filter((hour) => hour.dark && hour.primaryNight);
+
+  if (darkHours.length === 0) {
+    return {
+      score: 0,
+      grade: "poor",
+      darkHours: 0,
+      goodDarkHours: 0,
+      averageCloud: 100,
+      bestWindow: "No dark hours",
+      confidence: astroConfidence(leadDays),
+      confidenceLabel: astroConfidenceLabel(leadDays),
+    };
+  }
+
+  const score = round(average(darkHours.map((hour) => hour.score)));
+  return {
+    score,
+    grade: astroGrade(score),
+    darkHours: darkHours.length,
+    goodDarkHours: darkHours.filter((hour) => hour.score >= GOOD_ASTRO_HOUR_SCORE).length,
+    averageCloud: round(average(darkHours.map((hour) => hour.cloud))),
+    bestWindow: bestAstroWindow(darkHours),
+    confidence: astroConfidence(leadDays),
+    confidenceLabel: astroConfidenceLabel(leadDays),
+  };
+}
+
+function astroHourScore(slot, moon) {
+  const cloud = slot.cloud_cover ?? 100;
+  const score = round(
+    0.45 * cloudScore(slot) +
+      0.25 * 100 +
+      0.15 * moonScore(moon) +
+      0.1 * transparencyScore(slot) +
+      0.05 * windScore(slot.wind_speed_10m),
+  );
+
+  if (fogValue(slot.weather_code) > 0 || (slot.precipitation ?? 0) > 0.1 || (slot.precipitation_probability ?? 0) > 40) {
+    return Math.min(score, 20);
+  }
+  if (cloud > 60) {
+    return Math.min(score, 35);
+  }
+  return score;
+}
+
+function cloudScore(slot) {
+  const total = cloudLayerScore(slot.cloud_cover ?? 100);
+  const low = cloudLayerScore(slot.cloud_cover_low ?? slot.cloud_cover ?? 100);
+  const mid = cloudLayerScore(slot.cloud_cover_mid ?? slot.cloud_cover ?? 100);
+  const high = cloudLayerScore(slot.cloud_cover_high ?? slot.cloud_cover ?? 100);
+  return 0.55 * total + 0.2 * low + 0.15 * mid + 0.1 * high;
+}
+
+function cloudLayerScore(value) {
+  if (value <= 10) return 100;
+  if (value <= 25) return 80;
+  if (value <= 50) return 50;
+  if (value <= 75) return 20;
+  return 0;
+}
+
+function moonScore(moon) {
+  return Math.max(0, 100 - (moon?.illumination ?? 100) * 0.55);
+}
+
+function transparencyScore(slot) {
+  const visibility = visibilityScore(slot.visibility);
+  const humidity = humidityScore(slot.relative_humidity_2m);
+  const spread = dewPointSpreadScore(slot.temperature_2m, slot.dew_point_2m);
+  return 0.5 * visibility + 0.3 * humidity + 0.2 * spread;
+}
+
+function visibilityScore(value) {
+  if (value === null) return 0;
+  if (value >= 10000) return 100;
+  if (value >= 8000) return 85;
+  if (value >= 4000) return 50;
+  return 10;
+}
+
+function humidityScore(value) {
+  if (value === null) return 0;
+  if (value <= 70) return 100;
+  if (value <= 80) return 80;
+  if (value <= 90) return 45;
+  return 10;
+}
+
+function dewPointSpreadScore(temperature, dewPoint) {
+  if (temperature === null || dewPoint === null) return 0;
+  const spread = temperature - dewPoint;
+  if (spread >= 4) return 100;
+  if (spread >= 2) return 70;
+  if (spread >= 1) return 35;
+  return 10;
+}
+
+function windScore(value) {
+  if (value === null) return 0;
+  if (value <= 10) return 100;
+  if (value <= 15) return 80;
+  if (value <= 30) return 45;
+  return 10;
+}
+
+function isAstronomicalDark(key, daily, astronomy) {
+  const altitude = solarAltitude(key, astronomy);
+  if (altitude !== null) {
+    return altitude <= ASTRONOMICAL_DARK_SUN_ALTITUDE;
+  }
+
+  const date = key.slice(0, 10);
+  const midpoint = localMinuteFromSlotKey(key) + 30;
+  const eveningDark = sunEventMinute(daily, date, "sunset", ASTRONOMICAL_DARK_MARGIN_MINUTES);
+  const morningDark = sunEventMinute(daily, date, "sunrise", -ASTRONOMICAL_DARK_MARGIN_MINUTES);
+  return (eveningDark !== null && midpoint >= eveningDark) || (morningDark !== null && midpoint < morningDark);
+}
+
+function solarAltitude(key, astronomy) {
+  if (
+    !astronomy ||
+    !Number.isFinite(astronomy.lat) ||
+    !Number.isFinite(astronomy.lon) ||
+    !Number.isFinite(astronomy.utcOffsetSeconds)
+  ) {
+    return null;
+  }
+
+  const [date, time] = key.split("T");
+  const [year, month, day] = date.split("-").map(Number);
+  const [hour] = time.split(":").map(Number);
+  const utcTime =
+    Date.UTC(year, month - 1, day, hour, 30, 0) - astronomy.utcOffsetSeconds * 1000;
+  const julianDay = utcTime / 86400000 + 2440587.5;
+  const daysSinceEpoch = julianDay - 2451545;
+  const meanLongitude = positiveModulo(280.46 + 0.9856474 * daysSinceEpoch, 360);
+  const meanAnomaly = toRadians(positiveModulo(357.528 + 0.9856003 * daysSinceEpoch, 360));
+  const eclipticLongitude = toRadians(
+    meanLongitude + 1.915 * Math.sin(meanAnomaly) + 0.02 * Math.sin(2 * meanAnomaly),
+  );
+  const obliquity = toRadians(23.439 - 0.0000004 * daysSinceEpoch);
+  const rightAscension = Math.atan2(
+    Math.cos(obliquity) * Math.sin(eclipticLongitude),
+    Math.cos(eclipticLongitude),
+  );
+  const declination = Math.asin(Math.sin(obliquity) * Math.sin(eclipticLongitude));
+  const siderealHours = 18.697374558 + 24.06570982441908 * daysSinceEpoch;
+  const localSiderealDegrees = positiveModulo(siderealHours * 15 + astronomy.lon, 360);
+  const hourAngle = toRadians(positiveModulo(localSiderealDegrees - toDegrees(rightAscension) + 180, 360) - 180);
+  const latitude = toRadians(astronomy.lat);
+
+  return toDegrees(
+    Math.asin(
+      Math.sin(latitude) * Math.sin(declination) +
+        Math.cos(latitude) * Math.cos(declination) * Math.cos(hourAngle),
+    ),
+  );
+}
+
+function sunEventMinute(daily, date, key, offset) {
+  const position = daily.time.indexOf(date);
+  const value = daily[key]?.[position];
+  return value ? localMinuteFromDateTime(value) + offset : null;
+}
+
+function bestAstroWindow(hours) {
+  const goodHours = hours.filter((hour) => hour.score >= GOOD_ASTRO_HOUR_SCORE);
+  if (goodHours.length === 0) {
+    return hourLabel(hours.toSorted((left, right) => right.score - left.score)[0].key);
+  }
+
+  let best = [];
+  let current = [];
+  for (const hour of hours) {
+    if (hour.score >= GOOD_ASTRO_HOUR_SCORE) {
+      current.push(hour);
+    } else {
+      if (current.length > best.length) best = current;
+      current = [];
+    }
+  }
+  if (current.length > best.length) best = current;
+
+  if (best.length === 1) {
+    return hourLabel(best[0].key);
+  }
+  return `${hourLabel(best[0].key)}-${hourLabel(best.at(-1).key)}`;
+}
+
+function bestAstroNight(days) {
+  const ranked = days
+    .map((day, dayIndex) => ({ dayIndex, date: day.id, ...day.astro }))
+    .filter((day) => day.darkHours > 0)
+    .toSorted(
+      (left, right) =>
+        right.score - left.score || right.goodDarkHours - left.goodDarkHours || left.averageCloud - right.averageCloud,
+    );
+  return ranked[0] || null;
+}
+
+function astroGrade(score) {
+  if (score >= 85) return "excellent";
+  if (score >= 70) return "good";
+  if (score >= 50) return "fair";
+  return "poor";
+}
+
+function astroConfidence(leadDays) {
+  if (leadDays <= 2) return "high";
+  if (leadDays <= 5) return "medium";
+  if (leadDays <= 7) return "low";
+  return "trend";
+}
+
+function astroConfidenceLabel(leadDays) {
+  const confidence = astroConfidence(leadDays);
+  if (confidence === "high") return "High confidence";
+  if (confidence === "medium") return "Planning signal";
+  if (confidence === "low") return "Low confidence";
+  return "Trend only";
+}
+
+function hourLabel(key) {
+  return key.slice(11, 13);
+}
+
+function average(values) {
+  return values.reduce((total, value) => total + value, 0) / values.length;
+}
+
+function toRadians(degrees) {
+  return (degrees * Math.PI) / 180;
+}
+
+function toDegrees(radians) {
+  return (radians * 180) / Math.PI;
 }
 
 function observingClass(slot) {

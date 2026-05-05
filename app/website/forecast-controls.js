@@ -3,7 +3,7 @@ const ACTION_VIEWS = new Map([
   ["center-midnight", "midnight"],
   ["center-midday", "midday"],
 ]);
-const URL_VIEWS = new Set(["current", "midnight", "midday"]);
+const URL_VIEWS = new Set(["current", "midnight", "midday", "night"]);
 const HIDDEN_DETAIL_ROW_LABELS = new Set(["Pressure (hPa)", "Chance of Frost", "Precipitation Type"]);
 
 export function getDefaultLocation(storage, fallback) {

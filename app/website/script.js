@@ -1,4 +1,4 @@
-import { fetchForecastData, fetchReverseGeocodedLocation } from "./client-api.js?v=20260505-reverse-geocode-fallback";
+import { fetchForecastData, fetchReverseGeocodedLocation } from "./client-api.js?v=20260505-best-night";
 import {
   buildForecastShareUrl,
   forecastViewForAction,
@@ -9,8 +9,8 @@ import {
   moonLitPath,
   saveDefaultLocation,
   visibleForecastDetailRows,
-} from "./forecast-controls.js?v=20260505-local-storage-default";
-import { FORECAST_MODELS, forecastModelLabel, normalizeForecastModel } from "./open-meteo.js?v=20260505-reverse-geocode-fallback";
+} from "./forecast-controls.js?v=20260505-best-night";
+import { FORECAST_MODELS, forecastModelLabel, normalizeForecastModel } from "./open-meteo.js?v=20260505-best-night";
 
 const defaultLocation = {
   locationName: "Map start",
@@ -23,6 +23,7 @@ let expandedDayIndex = 0;
 let currentLocation = null;
 let currentView = "current";
 let currentModel = "best_match";
+let highlightedBestNightIndex = null;
 let saveButtonResetTimer = null;
 let mapPicker = null;
 let mapMarker = null;
@@ -145,6 +146,19 @@ function renderMoonDisc(moon, index) {
   `;
 }
 
+function renderAstroSummary(astro, highlighted) {
+  if (!astro) return "";
+  const label = highlighted ? "Best night" : "Astro";
+  return `
+    <span class="astro-score astro-score--${astro.grade}">
+      <span class="astro-score-label">${label}</span>
+      <strong>${astro.score}</strong>
+      <span>${astro.bestWindow}</span>
+      <span>${astro.averageCloud}% clouds</span>
+    </span>
+  `;
+}
+
 function renderForecast(nextExpandedIndex = expandedDayIndex) {
   if (!forecastData) return;
   expandedDayIndex = Math.max(0, Math.min(nextExpandedIndex, forecastData.days.length - 1));
@@ -152,11 +166,13 @@ function renderForecast(nextExpandedIndex = expandedDayIndex) {
   target.innerHTML = forecastData.days
     .map((day, index) => {
       const expanded = index === expandedDayIndex;
+      const bestNight = index === highlightedBestNightIndex;
       return `
-        <article class="forecast-day ${expanded ? "expanded" : "compact"}" data-day-index="${index}">
+        <article class="forecast-day ${expanded ? "expanded" : "compact"}${bestNight ? " best-night" : ""}" data-day-index="${index}">
           <button class="day-date" type="button" aria-expanded="${expanded}">
             <span class="day-name">${day.name}</span>
             <span class="day-number">${day.date}</span>
+            ${bestNight ? '<span class="best-night-pill">Best</span>' : ""}
           </button>
           <div class="moon-panel">
             ${renderMoonDisc(day.moon, index)}
@@ -164,6 +180,7 @@ function renderForecast(nextExpandedIndex = expandedDayIndex) {
               <span class="moon-phase">${day.moon.phase}</span>
               <span class="moon-percent">${day.moon.illumination}%</span>
               <span class="moon-rise">sun ${day.sun.rise} &nbsp; set ${day.sun.set}</span>
+              ${renderAstroSummary(day.astro, bestNight)}
             </span>
           </div>
           <div class="hour-block">
@@ -222,6 +239,7 @@ async function loadForecast({ lat, lon, locationName }, options = {}) {
   currentView = forecastData.meta.view || view;
   currentModel = forecastData.meta.model || model;
   expandedDayIndex = 0;
+  highlightedBestNightIndex = null;
   updateForecastMeta();
   renderForecast(0);
   updateActionButtons();
@@ -266,9 +284,33 @@ async function switchForecastView(view) {
   setStatus(`Centered forecast on ${forecastViewLabel(view)}`);
 }
 
+async function pickBestNight() {
+  const location = locationFromInputs(currentLocation);
+  if (!location) {
+    setStatus("Enter coordinates or select a point before picking the best night");
+    return;
+  }
+
+  await loadForecast(location, { view: "night", model: currentModel });
+  const best = forecastData.bestNight;
+  if (!best) {
+    setStatus("No dark forecast window found in the available forecast");
+    return;
+  }
+
+  highlightedBestNightIndex = best.dayIndex;
+  renderForecast(best.dayIndex);
+  const day = forecastData.days[best.dayIndex];
+  setStatus(
+    `Best night: ${day.name} ${day.id}, score ${best.score}/100, ${best.bestWindow}, ${best.averageCloud}% average clouds, ${best.confidenceLabel}`,
+  );
+  document.querySelector(".forecast-day.best-night")?.scrollIntoView({ block: "nearest" });
+}
+
 function forecastViewLabel(view) {
   if (view === "midnight") return "midnight";
   if (view === "midday") return "midday";
+  if (view === "night") return "night";
   return "current hour";
 }
 
@@ -285,6 +327,19 @@ function updateActionButtons() {
 function applyLocationInputs(location) {
   document.querySelector("#latitude").value = location.lat;
   document.querySelector("#longitude").value = location.lon;
+}
+
+function locationFromInputs(fallback = null) {
+  const lat = document.querySelector("#latitude").value.trim();
+  const lon = document.querySelector("#longitude").value.trim();
+  if (lat && lon) {
+    return {
+      lat,
+      lon,
+      locationName: `${lat}, ${lon}`,
+    };
+  }
+  return fallback;
 }
 
 function renderModelSelect() {
@@ -449,6 +504,14 @@ document.querySelector("#forecast-form").addEventListener("submit", async (event
   }
 });
 
+document.querySelector("#pick-best-night").addEventListener("click", async () => {
+  try {
+    await pickBestNight();
+  } catch (error) {
+    setStatus(error.message);
+    document.querySelector("#forecast").setAttribute("aria-busy", "false");
+  }
+});
 document.querySelector("#open-map-picker").addEventListener("click", openMapPicker);
 document.querySelector("#close-map-picker").addEventListener("click", closeMapPicker);
 document.querySelector("#cancel-map-picker").addEventListener("click", closeMapPicker);
