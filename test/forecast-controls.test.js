@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
+import * as forecastControls from "../app/website/forecast-controls.js";
 import {
   buildForecastShareUrl,
   forecastLocationFromUrl,
@@ -73,6 +74,14 @@ describe("forecast action views", () => {
     assert.equal(forecastViewFromUrl(new URLSearchParams("view=current")), "current");
     assert.equal(forecastViewFromUrl(new URLSearchParams("view=unknown")), "current");
     assert.equal(forecastViewFromUrl(new URLSearchParams()), "current");
+  });
+});
+
+describe("forecast day expansion", () => {
+  it("collapses the currently expanded day when it is selected again", () => {
+    assert.equal(forecastControls.nextExpandedForecastDay?.(2, 2), -1);
+    assert.equal(forecastControls.nextExpandedForecastDay?.(2, 4), 4);
+    assert.equal(forecastControls.nextExpandedForecastDay?.(-1, 0), 0);
   });
 });
 

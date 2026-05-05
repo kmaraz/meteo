@@ -37,6 +37,10 @@ export function forecastViewFromUrl(searchParams) {
   return URL_VIEWS.has(view) ? view : "current";
 }
 
+export function nextExpandedForecastDay(currentIndex, selectedIndex) {
+  return currentIndex === selectedIndex ? -1 : selectedIndex;
+}
+
 export function forecastLocationFromUrl(searchParams, fallback) {
   const lat = coordinateFromUrl(searchParams.get("lat"), -90, 90);
   const lon = coordinateFromUrl(searchParams.get("lon"), -180, 180);

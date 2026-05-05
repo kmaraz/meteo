@@ -7,6 +7,7 @@ import {
   locationFromMapPoint,
   mapPointFromLocation,
   moonLitPath,
+  nextExpandedForecastDay,
   saveDefaultLocation,
   visibleForecastDetailRows,
 } from "./forecast-controls.js?v=20260505-best-night";
@@ -161,7 +162,8 @@ function renderAstroSummary(astro, highlighted) {
 
 function renderForecast(nextExpandedIndex = expandedDayIndex) {
   if (!forecastData) return;
-  expandedDayIndex = Math.max(0, Math.min(nextExpandedIndex, forecastData.days.length - 1));
+  expandedDayIndex =
+    nextExpandedIndex < 0 ? -1 : Math.max(0, Math.min(nextExpandedIndex, forecastData.days.length - 1));
   const target = document.querySelector("#forecast");
   target.innerHTML = forecastData.days
     .map((day, index) => {
@@ -481,7 +483,7 @@ document.querySelector("#forecast").addEventListener("click", (event) => {
   const button = event.target.closest(".day-date");
   if (!button) return;
   const day = button.closest(".forecast-day");
-  renderForecast(Number(day.dataset.dayIndex));
+  renderForecast(nextExpandedForecastDay(expandedDayIndex, Number(day.dataset.dayIndex)));
 });
 
 document.querySelector("#forecast-form").addEventListener("submit", async (event) => {
