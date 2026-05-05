@@ -3,11 +3,13 @@ import { describe, it } from "node:test";
 
 import {
   FORECAST_MODELS,
+  buildBigDataCloudReverseGeocodingUrl,
   buildGeocodingUrl,
   buildOpenMeteoUrl,
   buildReverseGeocodingUrl,
   normalizeOpenMeteoForecast,
   normalizeForecastModel,
+  normalizeBigDataCloudReverseGeocodingResponse,
   normalizeReverseGeocodingResponse,
 } from "../app/website/open-meteo.js";
 
@@ -199,6 +201,26 @@ describe("reverse geocoding", () => {
 
     assert.equal(normalized.label, "Devínske Jazero, Devínska Nová Ves");
     assert.equal(normalized.displayName, "Devínske Jazero, Devínska Nová Ves, okres Bratislava IV, Bratislavský kraj, Slovensko");
+  });
+
+  it("builds and normalizes the BigDataCloud reverse geocoding fallback", () => {
+    const url = buildBigDataCloudReverseGeocodingUrl({ lat: 48.21, lon: 16.97 });
+
+    assert.equal(url.origin, "https://api.bigdatacloud.net");
+    assert.equal(url.pathname, "/data/reverse-geocode-client");
+    assert.equal(url.searchParams.get("latitude"), "48.21");
+    assert.equal(url.searchParams.get("longitude"), "16.97");
+    assert.equal(url.searchParams.get("localityLanguage"), "sk");
+
+    const normalized = normalizeBigDataCloudReverseGeocodingResponse({
+      locality: "Devínska Nová Ves",
+      city: "Bratislava",
+      principalSubdivision: "Bratislavský kraj",
+      countryName: "Slovensko",
+    });
+
+    assert.equal(normalized.label, "Devínska Nová Ves, Bratislava");
+    assert.equal(normalized.displayName, "Devínska Nová Ves, Bratislava, Bratislavský kraj, Slovensko");
   });
 });
 

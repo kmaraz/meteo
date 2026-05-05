@@ -1,12 +1,14 @@
 import {
+  buildBigDataCloudReverseGeocodingUrl,
   buildGeocodingUrl,
   buildOpenMeteoUrl,
   buildReverseGeocodingUrl,
+  normalizeBigDataCloudReverseGeocodingResponse,
   normalizeGeocodingResponse,
   normalizeOpenMeteoForecast,
   normalizeForecastModel,
   normalizeReverseGeocodingResponse,
-} from "./open-meteo.js?v=20260505-reverse-geocode";
+} from "./open-meteo.js?v=20260505-reverse-geocode-fallback";
 
 const reverseGeocodingCache = new Map();
 
@@ -67,15 +69,24 @@ export async function fetchReverseGeocodedLocation(
     reverseGeocodingCache.set(cacheKey, location);
     return location;
   } catch (error) {
-    if (!canUseStaticFallback(error)) {
+    if (!canUseReverseGeocodingFallback(error)) {
       throw error;
     }
   }
 
-  const reverseGeocoding = await fetchJson(buildReverseGeocodingUrl({ lat, lon }), fetchImpl);
-  const location = normalizeReverseGeocodingResponse(reverseGeocoding, `${lat}, ${lon}`);
+  const location = await fetchExternalReverseGeocodedLocation({ lat, lon }, fetchImpl);
   reverseGeocodingCache.set(cacheKey, location);
   return location;
+}
+
+async function fetchExternalReverseGeocodedLocation({ lat, lon }, fetchImpl) {
+  try {
+    const reverseGeocoding = await fetchJson(buildReverseGeocodingUrl({ lat, lon }), fetchImpl);
+    return normalizeReverseGeocodingResponse(reverseGeocoding, `${lat}, ${lon}`);
+  } catch {
+    const reverseGeocoding = await fetchJson(buildBigDataCloudReverseGeocodingUrl({ lat, lon }), fetchImpl);
+    return normalizeBigDataCloudReverseGeocodingResponse(reverseGeocoding, `${lat}, ${lon}`);
+  }
 }
 
 function buildBackendUrl(path, baseUrl, params) {
@@ -102,6 +113,10 @@ async function fetchJson(url, fetchImpl) {
 
 function canUseStaticFallback(error) {
   return error.status === 404;
+}
+
+function canUseReverseGeocodingFallback(error) {
+  return error.status === 404 || error.status >= 500;
 }
 
 function reverseGeocodingCacheKey(lat, lon) {

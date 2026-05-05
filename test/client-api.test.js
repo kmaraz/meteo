@@ -185,4 +185,36 @@ describe("fetchReverseGeocodedLocation", () => {
     assert.equal(new URL(requestedUrls[1]).origin, "https://nominatim.openstreetmap.org");
     assert.equal(location.label, "Devínske Jazero, Devínska Nová Ves");
   });
+
+  it("falls back to BigDataCloud when Nominatim rejects direct reverse geocoding", async () => {
+    const requestedUrls = [];
+    const fetchImpl = async (url) => {
+      requestedUrls.push(url.toString());
+      if (url.pathname === "/meteo/api/reverse-geocode") {
+        return jsonResponse({ message: "not found" }, 404);
+      }
+      if (url.origin === "https://nominatim.openstreetmap.org") {
+        return jsonResponse({ message: "too many requests" }, 429);
+      }
+      return jsonResponse({
+        locality: "Devínska Nová Ves",
+        city: "Bratislava",
+        principalSubdivision: "Bratislavský kraj",
+        countryName: "Slovensko",
+      });
+    };
+
+    const location = await fetchReverseGeocodedLocation(
+      { lat: "48.21", lon: "16.97" },
+      {
+        baseUrl: "https://www.maraz.sk/meteo/",
+        fetchImpl,
+      },
+    );
+
+    assert.equal(requestedUrls[0], "https://www.maraz.sk/meteo/api/reverse-geocode?lat=48.21&lon=16.97");
+    assert.equal(new URL(requestedUrls[1]).origin, "https://nominatim.openstreetmap.org");
+    assert.equal(new URL(requestedUrls[2]).origin, "https://api.bigdatacloud.net");
+    assert.equal(location.label, "Devínska Nová Ves, Bratislava");
+  });
 });

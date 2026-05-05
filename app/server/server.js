@@ -5,9 +5,11 @@ import { extname, join, normalize, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import {
+  buildBigDataCloudReverseGeocodingUrl,
   buildGeocodingUrl,
   buildOpenMeteoUrl,
   buildReverseGeocodingUrl,
+  normalizeBigDataCloudReverseGeocodingResponse,
   normalizeGeocodingResponse,
   normalizeOpenMeteoForecast,
   normalizeReverseGeocodingResponse,
@@ -85,9 +87,17 @@ async function handleGeocode(url, response, fetchImpl) {
 async function handleReverseGeocode(url, response, fetchImpl) {
   const lat = validateCoordinate(url.searchParams.get("lat"), "lat", -90, 90);
   const lon = validateCoordinate(url.searchParams.get("lon"), "lon", -180, 180);
-  const reverseGeocodingUrl = buildReverseGeocodingUrl({ lat, lon });
-  const reverseGeocoding = await fetchJson(reverseGeocodingUrl, fetchImpl);
-  sendJson(response, 200, normalizeReverseGeocodingResponse(reverseGeocoding, `${lat}, ${lon}`));
+  sendJson(response, 200, await fetchReverseGeocodedLocation({ lat, lon }, fetchImpl));
+}
+
+async function fetchReverseGeocodedLocation({ lat, lon }, fetchImpl) {
+  try {
+    const reverseGeocoding = await fetchJson(buildReverseGeocodingUrl({ lat, lon }), fetchImpl);
+    return normalizeReverseGeocodingResponse(reverseGeocoding, `${lat}, ${lon}`);
+  } catch {
+    const reverseGeocoding = await fetchJson(buildBigDataCloudReverseGeocodingUrl({ lat, lon }), fetchImpl);
+    return normalizeBigDataCloudReverseGeocodingResponse(reverseGeocoding, `${lat}, ${lon}`);
+  }
 }
 
 async function fetchJson(url, fetchImpl) {

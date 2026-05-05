@@ -1,6 +1,7 @@
 const OPEN_METEO_FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
 const OPEN_METEO_GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search";
 const NOMINATIM_REVERSE_GEOCODING_URL = "https://nominatim.openstreetmap.org/reverse";
+const BIGDATACLOUD_REVERSE_GEOCODING_URL = "https://api.bigdatacloud.net/data/reverse-geocode-client";
 const DEFAULT_TIMEZONE = "Europe/Bratislava";
 const DEFAULT_MODEL = "best_match";
 export const FORECAST_MODELS = [
@@ -152,6 +153,14 @@ export function buildReverseGeocodingUrl({ lat, lon }) {
   return url;
 }
 
+export function buildBigDataCloudReverseGeocodingUrl({ lat, lon }) {
+  const url = new URL(BIGDATACLOUD_REVERSE_GEOCODING_URL);
+  url.searchParams.set("latitude", formatCoordinate(lat));
+  url.searchParams.set("longitude", formatCoordinate(lon));
+  url.searchParams.set("localityLanguage", "sk");
+  return url;
+}
+
 export function normalizeOpenMeteoForecast(response, options) {
   const timezone = response.timezone || DEFAULT_TIMEZONE;
   const maxDays = options.maxDays ?? 7;
@@ -268,6 +277,25 @@ export function normalizeReverseGeocodingResponse(response, fallbackLabel = "") 
   };
 }
 
+export function normalizeBigDataCloudReverseGeocodingResponse(response, fallbackLabel = "") {
+  const primary = firstPresent(response.locality, response.city, response.principalSubdivision, response.countryName);
+  const parent = firstDifferent(primary, response.city, response.principalSubdivision, response.countryName);
+  const displayName = uniqueNonEmpty([
+    response.locality,
+    response.city,
+    response.principalSubdivision,
+    response.countryName,
+  ]).join(", ");
+  const label = [primary, parent].filter(Boolean).join(", ") || displayName || fallbackLabel;
+
+  return {
+    label,
+    name: primary,
+    displayName,
+    address: response,
+  };
+}
+
 export function validateCoordinate(value, name, min, max) {
   const number = Number(value);
   if (!Number.isFinite(number) || number < min || number > max) {
@@ -295,6 +323,10 @@ function shortDisplayName(value) {
     .filter(Boolean)
     .slice(0, 2)
     .join(", ");
+}
+
+function uniqueNonEmpty(values) {
+  return [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))];
 }
 
 function buildHourlyIndex(hourly) {

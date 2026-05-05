@@ -1,4 +1,4 @@
-import { fetchForecastData, fetchReverseGeocodedLocation } from "./client-api.js?v=20260505-reverse-geocode";
+import { fetchForecastData, fetchReverseGeocodedLocation } from "./client-api.js?v=20260505-reverse-geocode-fallback";
 import {
   buildForecastShareUrl,
   forecastViewForAction,
@@ -10,7 +10,7 @@ import {
   saveDefaultLocation,
   visibleForecastDetailRows,
 } from "./forecast-controls.js?v=20260505-local-storage-default";
-import { FORECAST_MODELS, forecastModelLabel, normalizeForecastModel } from "./open-meteo.js?v=20260505-reverse-geocode";
+import { FORECAST_MODELS, forecastModelLabel, normalizeForecastModel } from "./open-meteo.js?v=20260505-reverse-geocode-fallback";
 
 const defaultLocation = {
   locationName: "Map start",
