@@ -37,6 +37,14 @@ export function forecastViewFromUrl(searchParams) {
   return URL_VIEWS.has(view) ? view : "current";
 }
 
+export function initialExpandedForecastDay() {
+  return -1;
+}
+
+export function expandedForecastDayForBestNight() {
+  return initialExpandedForecastDay();
+}
+
 export function nextExpandedForecastDay(currentIndex, selectedIndex) {
   return currentIndex === selectedIndex ? -1 : selectedIndex;
 }

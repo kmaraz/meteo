@@ -78,6 +78,14 @@ describe("forecast action views", () => {
 });
 
 describe("forecast day expansion", () => {
+  it("starts with all forecast days collapsed", () => {
+    assert.equal(forecastControls.initialExpandedForecastDay?.(), -1);
+  });
+
+  it("keeps all forecast days collapsed after selecting the best night", () => {
+    assert.equal(forecastControls.expandedForecastDayForBestNight?.(), -1);
+  });
+
   it("collapses the currently expanded day when it is selected again", () => {
     assert.equal(forecastControls.nextExpandedForecastDay?.(2, 2), -1);
     assert.equal(forecastControls.nextExpandedForecastDay?.(2, 4), 4);

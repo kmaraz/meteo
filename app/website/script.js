@@ -1,8 +1,10 @@
 import { fetchForecastData, fetchReverseGeocodedLocation } from "./client-api.js?v=20260505-best-night";
 import {
   buildForecastShareUrl,
+  expandedForecastDayForBestNight,
   forecastViewForAction,
   forecastViewFromUrl,
+  initialExpandedForecastDay,
   initialForecastLocation,
   locationFromMapPoint,
   mapPointFromLocation,
@@ -20,7 +22,7 @@ const defaultLocation = {
 };
 
 let forecastData = null;
-let expandedDayIndex = 0;
+let expandedDayIndex = initialExpandedForecastDay();
 let currentLocation = null;
 let currentView = "current";
 let currentModel = "best_match";
@@ -240,10 +242,10 @@ async function loadForecast({ lat, lon, locationName }, options = {}) {
   };
   currentView = forecastData.meta.view || view;
   currentModel = forecastData.meta.model || model;
-  expandedDayIndex = 0;
+  expandedDayIndex = initialExpandedForecastDay();
   highlightedBestNightIndex = null;
   updateForecastMeta();
-  renderForecast(0);
+  renderForecast(initialExpandedForecastDay());
   updateActionButtons();
   syncModelSelect();
   syncShareUrl();
@@ -301,7 +303,7 @@ async function pickBestNight() {
   }
 
   highlightedBestNightIndex = best.dayIndex;
-  renderForecast(best.dayIndex);
+  renderForecast(expandedForecastDayForBestNight());
   const day = forecastData.days[best.dayIndex];
   setStatus(
     `Best night: ${day.name} ${day.id}, score ${best.score}/100, ${best.bestWindow}, ${best.averageCloud}% average clouds, ${best.confidenceLabel}`,
