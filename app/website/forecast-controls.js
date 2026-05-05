@@ -67,6 +67,15 @@ export function locationFromMapPoint(point) {
   };
 }
 
+export function mapPointFromLocation(location, fallback = null) {
+  const lat = Number(location?.lat);
+  const lng = Number(location?.lon ?? location?.lng);
+  if (isMapCoordinate(lat, -90, 90) && isMapCoordinate(lng, -180, 180)) {
+    return { lat, lng };
+  }
+  return fallback ? mapPointFromLocation(fallback) : null;
+}
+
 export function visibleForecastDetailRows(rows) {
   return rows.filter((row) => !HIDDEN_DETAIL_ROW_LABELS.has(row.label));
 }
@@ -114,6 +123,10 @@ function formatMapCoordinate(value) {
     throw new Error("Invalid map coordinate");
   }
   return number.toFixed(5);
+}
+
+function isMapCoordinate(value, min, max) {
+  return Number.isFinite(value) && value >= min && value <= max;
 }
 
 function formatSvgNumber(value) {

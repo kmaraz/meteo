@@ -6,10 +6,11 @@ import {
   forecastViewFromUrl,
   getDefaultLocation,
   locationFromMapPoint,
+  mapPointFromLocation,
   moonLitPath,
   saveDefaultLocation,
   visibleForecastDetailRows,
-} from "./forecast-controls.js?v=20260504-hide-detail-rows";
+} from "./forecast-controls.js?v=20260505-preselect-map-point";
 import { FORECAST_MODELS, forecastModelLabel, normalizeForecastModel } from "./open-meteo.js?v=20260504-map-picker";
 
 const defaultLocation = {
@@ -321,19 +322,13 @@ function initializeMapPicker() {
 }
 
 function currentMapCenter() {
-  const latitude = Number(document.querySelector("#latitude").value || currentLocation?.lat || defaultLocation.lat);
-  const longitude = Number(document.querySelector("#longitude").value || currentLocation?.lon || defaultLocation.lon);
-  if (
-    Number.isFinite(latitude) &&
-    latitude >= -90 &&
-    latitude <= 90 &&
-    Number.isFinite(longitude) &&
-    longitude >= -180 &&
-    longitude <= 180
-  ) {
-    return { lat: latitude, lng: longitude };
-  }
-  return { lat: Number(defaultLocation.lat), lng: Number(defaultLocation.lon) };
+  return mapPointFromLocation(
+    {
+      lat: document.querySelector("#latitude").value || currentLocation?.lat,
+      lon: document.querySelector("#longitude").value || currentLocation?.lon,
+    },
+    defaultLocation,
+  );
 }
 
 function openMapPicker() {
@@ -348,7 +343,7 @@ function openMapPicker() {
   initializeMapPicker();
 
   const center = currentMapCenter();
-  resetMapSelection();
+  setMapSelection(center);
   mapPicker.setView([center.lat, center.lng], mapPicker.getZoom() || 10);
   requestAnimationFrame(() => {
     mapPicker.invalidateSize();
@@ -360,16 +355,6 @@ function closeMapPicker() {
   document.querySelector("#map-dialog").hidden = true;
   document.body.classList.remove("map-dialog-open");
   document.querySelector("#open-map-picker").focus();
-}
-
-function resetMapSelection() {
-  selectedMapLocation = null;
-  if (mapMarker) {
-    mapMarker.remove();
-    mapMarker = null;
-  }
-  document.querySelector("#map-selected-coordinates").textContent = "Click on the map to select a point";
-  document.querySelector("#use-map-picker").disabled = true;
 }
 
 function setMapSelection(point) {

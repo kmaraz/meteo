@@ -8,6 +8,7 @@ import {
   forecastViewFromUrl,
   getDefaultLocation,
   locationFromMapPoint,
+  mapPointFromLocation,
   moonLitPath,
   saveDefaultLocation,
   visibleForecastDetailRows,
@@ -114,6 +115,20 @@ describe("map point forecast location", () => {
       lat: "48.14816",
       lon: "17.10674",
     });
+  });
+
+  it("uses valid forecast coordinates as a map point", () => {
+    assert.deepEqual(mapPointFromLocation({ lat: "48.14816", lon: "17.10674" }), {
+      lat: 48.14816,
+      lng: 17.10674,
+    });
+  });
+
+  it("falls back when forecast coordinates cannot be shown on a map", () => {
+    assert.deepEqual(
+      mapPointFromLocation({ lat: "91", lon: "17" }, { lat: "48.21", lon: "16.97" }),
+      { lat: 48.21, lng: 16.97 },
+    );
   });
 });
 
