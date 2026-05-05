@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { fetchForecastData } from "../app/website/client-api.js";
+import { fetchForecastData, fetchReverseGeocodedLocation } from "../app/website/client-api.js";
 
 function hourlyValues(value) {
   return Array(48).fill(value);
@@ -152,5 +152,37 @@ describe("fetchForecastData", () => {
     assert.equal(new URL(requestedUrls[1]).searchParams.get("models"), "icon_d2");
     assert.equal(forecast.meta.model, "icon_d2");
     assert.equal(forecast.meta.modelLabel, "DWD ICON D2");
+  });
+});
+
+describe("fetchReverseGeocodedLocation", () => {
+  it("falls back to direct Nominatim calls when the local API is not present", async () => {
+    const requestedUrls = [];
+    const fetchImpl = async (url) => {
+      requestedUrls.push(url.toString());
+      if (url.pathname === "/meteo/api/reverse-geocode") {
+        return jsonResponse({ message: "not found" }, 404);
+      }
+      return jsonResponse({
+        name: "Devínske Jazero",
+        display_name: "Devínske Jazero, Devínska Nová Ves, okres Bratislava IV, Bratislavský kraj, Slovensko",
+        address: {
+          hamlet: "Devínske Jazero",
+          suburb: "Devínska Nová Ves",
+        },
+      });
+    };
+
+    const location = await fetchReverseGeocodedLocation(
+      { lat: "48.25125", lon: "16.95946" },
+      {
+        baseUrl: "https://www.maraz.sk/meteo/",
+        fetchImpl,
+      },
+    );
+
+    assert.equal(requestedUrls[0], "https://www.maraz.sk/meteo/api/reverse-geocode?lat=48.25125&lon=16.95946");
+    assert.equal(new URL(requestedUrls[1]).origin, "https://nominatim.openstreetmap.org");
+    assert.equal(location.label, "Devínske Jazero, Devínska Nová Ves");
   });
 });

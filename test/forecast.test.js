@@ -5,8 +5,10 @@ import {
   FORECAST_MODELS,
   buildGeocodingUrl,
   buildOpenMeteoUrl,
+  buildReverseGeocodingUrl,
   normalizeOpenMeteoForecast,
   normalizeForecastModel,
+  normalizeReverseGeocodingResponse,
 } from "../app/website/open-meteo.js";
 
 const hourlyVariables = [
@@ -166,6 +168,37 @@ describe("buildGeocodingUrl", () => {
     assert.equal(url.searchParams.get("countryCode"), "SK");
     assert.equal(url.searchParams.get("language"), "sk");
     assert.equal(url.searchParams.get("count"), "5");
+  });
+});
+
+describe("reverse geocoding", () => {
+  it("builds a Slovak-language Nominatim reverse geocoding request", () => {
+    const url = buildReverseGeocodingUrl({ lat: 48.25125, lon: 16.95946 });
+
+    assert.equal(url.origin, "https://nominatim.openstreetmap.org");
+    assert.equal(url.pathname, "/reverse");
+    assert.equal(url.searchParams.get("format"), "jsonv2");
+    assert.equal(url.searchParams.get("lat"), "48.25125");
+    assert.equal(url.searchParams.get("lon"), "16.95946");
+    assert.equal(url.searchParams.get("zoom"), "14");
+    assert.equal(url.searchParams.get("addressdetails"), "1");
+    assert.equal(url.searchParams.get("accept-language"), "sk");
+  });
+
+  it("normalizes Nominatim address parts into a short forecast label", () => {
+    const normalized = normalizeReverseGeocodingResponse({
+      name: "Devínske Jazero",
+      display_name: "Devínske Jazero, Devínska Nová Ves, okres Bratislava IV, Bratislavský kraj, Slovensko",
+      address: {
+        hamlet: "Devínske Jazero",
+        suburb: "Devínska Nová Ves",
+        state_district: "okres Bratislava IV",
+        country: "Slovensko",
+      },
+    });
+
+    assert.equal(normalized.label, "Devínske Jazero, Devínska Nová Ves");
+    assert.equal(normalized.displayName, "Devínske Jazero, Devínska Nová Ves, okres Bratislava IV, Bratislavský kraj, Slovensko");
   });
 });
 

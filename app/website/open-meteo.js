@@ -1,5 +1,6 @@
 const OPEN_METEO_FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
 const OPEN_METEO_GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search";
+const NOMINATIM_REVERSE_GEOCODING_URL = "https://nominatim.openstreetmap.org/reverse";
 const DEFAULT_TIMEZONE = "Europe/Bratislava";
 const DEFAULT_MODEL = "best_match";
 export const FORECAST_MODELS = [
@@ -140,6 +141,17 @@ export function buildGeocodingUrl(name) {
   return url;
 }
 
+export function buildReverseGeocodingUrl({ lat, lon }) {
+  const url = new URL(NOMINATIM_REVERSE_GEOCODING_URL);
+  url.searchParams.set("format", "jsonv2");
+  url.searchParams.set("lat", formatCoordinate(lat));
+  url.searchParams.set("lon", formatCoordinate(lon));
+  url.searchParams.set("zoom", "14");
+  url.searchParams.set("addressdetails", "1");
+  url.searchParams.set("accept-language", "sk");
+  return url;
+}
+
 export function normalizeOpenMeteoForecast(response, options) {
   const timezone = response.timezone || DEFAULT_TIMEZONE;
   const maxDays = options.maxDays ?? 7;
@@ -221,6 +233,41 @@ export function normalizeGeocodingResponse(response) {
   };
 }
 
+export function normalizeReverseGeocodingResponse(response, fallbackLabel = "") {
+  const address = response.address || {};
+  const primary = firstPresent(
+    address.amenity,
+    address.tourism,
+    address.attraction,
+    address.hamlet,
+    address.neighbourhood,
+    address.suburb,
+    address.village,
+    address.town,
+    address.city,
+    address.municipality,
+    response.name,
+    address.road,
+  );
+  const parent = firstDifferent(
+    primary,
+    address.suburb,
+    address.village,
+    address.town,
+    address.city,
+    address.municipality,
+    address.state_district,
+  );
+  const label = [primary, parent].filter(Boolean).join(", ") || shortDisplayName(response.display_name) || fallbackLabel;
+
+  return {
+    label,
+    name: response.name || primary || "",
+    displayName: response.display_name || "",
+    address,
+  };
+}
+
 export function validateCoordinate(value, name, min, max) {
   const number = Number(value);
   if (!Number.isFinite(number) || number < min || number > max) {
@@ -231,6 +278,23 @@ export function validateCoordinate(value, name, min, max) {
 
 function formatCoordinate(value) {
   return String(Number(value));
+}
+
+function firstPresent(...values) {
+  return values.find((value) => typeof value === "string" && value.trim())?.trim() || "";
+}
+
+function firstDifferent(primary, ...values) {
+  return values.find((value) => typeof value === "string" && value.trim() && value.trim() !== primary)?.trim() || "";
+}
+
+function shortDisplayName(value) {
+  return String(value || "")
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .slice(0, 2)
+    .join(", ");
 }
 
 function buildHourlyIndex(hourly) {

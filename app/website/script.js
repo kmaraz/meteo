@@ -1,4 +1,4 @@
-import { fetchForecastData } from "./client-api.js?v=20260504-map-picker";
+import { fetchForecastData, fetchReverseGeocodedLocation } from "./client-api.js?v=20260505-reverse-geocode";
 import {
   buildForecastShareUrl,
   forecastLocationFromUrl,
@@ -11,7 +11,7 @@ import {
   saveDefaultLocation,
   visibleForecastDetailRows,
 } from "./forecast-controls.js?v=20260505-preselect-map-point";
-import { FORECAST_MODELS, forecastModelLabel, normalizeForecastModel } from "./open-meteo.js?v=20260504-map-picker";
+import { FORECAST_MODELS, forecastModelLabel, normalizeForecastModel } from "./open-meteo.js?v=20260505-reverse-geocode";
 
 const defaultLocation = {
   locationName: "Devínska Nová Ves, Okres Bratislava IV, Slovakia",
@@ -197,11 +197,17 @@ async function loadForecast({ lat, lon, locationName }, options = {}) {
   setStatus(`Loading ${forecastViewLabel(view)} forecast with ${forecastModelLabel(model)}...`);
   document.querySelector("#forecast").setAttribute("aria-busy", "true");
 
-  forecastData = await fetchForecastData({ lat, lon, locationName, view, model });
+  const [forecast, reverseLocation] = await Promise.all([
+    fetchForecastData({ lat, lon, locationName, view, model }),
+    fetchReverseGeocodedLocation({ lat, lon }).catch(() => null),
+  ]);
+  forecastData = forecast;
+  const resolvedLocationName = reverseLocation?.label || forecastData.meta.locationName || locationName;
+  forecastData.meta.locationName = resolvedLocationName;
   currentLocation = {
     lat: String(lat),
     lon: String(lon),
-    locationName,
+    locationName: resolvedLocationName,
   };
   currentView = forecastData.meta.view || view;
   currentModel = forecastData.meta.model || model;

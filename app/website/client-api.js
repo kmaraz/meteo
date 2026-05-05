@@ -1,10 +1,14 @@
 import {
   buildGeocodingUrl,
   buildOpenMeteoUrl,
+  buildReverseGeocodingUrl,
   normalizeGeocodingResponse,
   normalizeOpenMeteoForecast,
   normalizeForecastModel,
-} from "./open-meteo.js?v=20260504-map-picker";
+  normalizeReverseGeocodingResponse,
+} from "./open-meteo.js?v=20260505-reverse-geocode";
+
+const reverseGeocodingCache = new Map();
 
 export async function fetchForecastData(
   { lat, lon, locationName, view, model },
@@ -48,6 +52,32 @@ export async function fetchSlovakGeocoding(name, { baseUrl = window.location.hre
   return normalizeGeocodingResponse(geocoding);
 }
 
+export async function fetchReverseGeocodedLocation(
+  { lat, lon },
+  { baseUrl = window.location.href, fetchImpl = fetch } = {},
+) {
+  const cacheKey = reverseGeocodingCacheKey(lat, lon);
+  if (reverseGeocodingCache.has(cacheKey)) {
+    return reverseGeocodingCache.get(cacheKey);
+  }
+
+  const backendUrl = buildBackendUrl("api/reverse-geocode", baseUrl, { lat, lon });
+  try {
+    const location = await fetchJson(backendUrl, fetchImpl);
+    reverseGeocodingCache.set(cacheKey, location);
+    return location;
+  } catch (error) {
+    if (!canUseStaticFallback(error)) {
+      throw error;
+    }
+  }
+
+  const reverseGeocoding = await fetchJson(buildReverseGeocodingUrl({ lat, lon }), fetchImpl);
+  const location = normalizeReverseGeocodingResponse(reverseGeocoding, `${lat}, ${lon}`);
+  reverseGeocodingCache.set(cacheKey, location);
+  return location;
+}
+
 function buildBackendUrl(path, baseUrl, params) {
   const url = new URL(path, baseUrl);
   for (const [key, value] of Object.entries(params)) {
@@ -72,4 +102,8 @@ async function fetchJson(url, fetchImpl) {
 
 function canUseStaticFallback(error) {
   return error.status === 404;
+}
+
+function reverseGeocodingCacheKey(lat, lon) {
+  return `${Number(lat).toFixed(5)},${Number(lon).toFixed(5)}`;
 }

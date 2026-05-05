@@ -7,8 +7,10 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   buildGeocodingUrl,
   buildOpenMeteoUrl,
+  buildReverseGeocodingUrl,
   normalizeGeocodingResponse,
   normalizeOpenMeteoForecast,
+  normalizeReverseGeocodingResponse,
   validateCoordinate,
 } from "../website/open-meteo.js";
 
@@ -39,6 +41,10 @@ export function createAppServer({ fetchImpl = fetch } = {}) {
       }
       if (url.pathname === "/api/geocode") {
         await handleGeocode(url, response, fetchImpl);
+        return;
+      }
+      if (url.pathname === "/api/reverse-geocode") {
+        await handleReverseGeocode(url, response, fetchImpl);
         return;
       }
       await serveStatic(url, response);
@@ -76,6 +82,14 @@ async function handleGeocode(url, response, fetchImpl) {
   sendJson(response, 200, normalizeGeocodingResponse(geocoding));
 }
 
+async function handleReverseGeocode(url, response, fetchImpl) {
+  const lat = validateCoordinate(url.searchParams.get("lat"), "lat", -90, 90);
+  const lon = validateCoordinate(url.searchParams.get("lon"), "lon", -180, 180);
+  const reverseGeocodingUrl = buildReverseGeocodingUrl({ lat, lon });
+  const reverseGeocoding = await fetchJson(reverseGeocodingUrl, fetchImpl);
+  sendJson(response, 200, normalizeReverseGeocodingResponse(reverseGeocoding, `${lat}, ${lon}`));
+}
+
 async function fetchJson(url, fetchImpl) {
   const key = url.toString();
   const cached = cache.get(key);
@@ -87,11 +101,14 @@ async function fetchJson(url, fetchImpl) {
   const timeout = setTimeout(() => controller.abort(), 10000);
   try {
     const response = await fetchImpl(url, {
-      headers: { accept: "application/json" },
+      headers: {
+        accept: "application/json",
+        "user-agent": "meteo.maraz.sk/0.1",
+      },
       signal: controller.signal,
     });
     if (!response.ok) {
-      const error = new Error(`Open-Meteo request failed with ${response.status}`);
+      const error = new Error(`Upstream request failed with ${response.status}`);
       error.statusCode = 502;
       throw error;
     }
