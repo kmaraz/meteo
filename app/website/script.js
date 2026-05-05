@@ -1,5 +1,6 @@
 import { fetchForecastData, fetchReverseGeocodedLocation } from "./client-api.js?v=20260505-best-night";
 import {
+  bestNightScrollOptions,
   buildForecastShareUrl,
   expandedForecastDayForBestNight,
   forecastViewForAction,
@@ -308,7 +309,7 @@ async function pickBestNight() {
   setStatus(
     `Best night: ${day.name} ${day.id}, score ${best.score}/100, ${best.bestWindow}, ${best.averageCloud}% average clouds, ${best.confidenceLabel}`,
   );
-  document.querySelector(".forecast-day.best-night")?.scrollIntoView({ block: "nearest" });
+  document.querySelector(".forecast-day.best-night")?.scrollIntoView(bestNightScrollOptions());
 }
 
 function forecastViewLabel(view) {

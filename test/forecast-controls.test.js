@@ -86,6 +86,13 @@ describe("forecast day expansion", () => {
     assert.equal(forecastControls.expandedForecastDayForBestNight?.(), -1);
   });
 
+  it("aligns the selected best night to the top when scrolling", () => {
+    assert.deepEqual(forecastControls.bestNightScrollOptions?.(), {
+      block: "start",
+      inline: "nearest",
+    });
+  });
+
   it("collapses the currently expanded day when it is selected again", () => {
     assert.equal(forecastControls.nextExpandedForecastDay?.(2, 2), -1);
     assert.equal(forecastControls.nextExpandedForecastDay?.(2, 4), 4);

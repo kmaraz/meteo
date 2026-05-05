@@ -45,6 +45,13 @@ export function expandedForecastDayForBestNight() {
   return initialExpandedForecastDay();
 }
 
+export function bestNightScrollOptions() {
+  return {
+    block: "start",
+    inline: "nearest",
+  };
+}
+
 export function nextExpandedForecastDay(currentIndex, selectedIndex) {
   return currentIndex === selectedIndex ? -1 : selectedIndex;
 }
