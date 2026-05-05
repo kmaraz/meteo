@@ -41,10 +41,14 @@ export function forecastLocationFromUrl(searchParams, fallback) {
   const lat = coordinateFromUrl(searchParams.get("lat"), -90, 90);
   const lon = coordinateFromUrl(searchParams.get("lon"), -180, 180);
   if (!lat || !lon) {
-    return fallback;
+    return fallback ?? null;
   }
 
   return { locationName: `${lat}, ${lon}`, lat, lon };
+}
+
+export function initialForecastLocation(searchParams, storage) {
+  return forecastLocationFromUrl(searchParams) || getDefaultLocation(storage, null);
 }
 
 export function buildForecastShareUrl(baseUrl, { lat, lon, model, view }) {

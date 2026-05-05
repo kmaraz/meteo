@@ -1,20 +1,19 @@
 import { fetchForecastData, fetchReverseGeocodedLocation } from "./client-api.js?v=20260505-reverse-geocode";
 import {
   buildForecastShareUrl,
-  forecastLocationFromUrl,
   forecastViewForAction,
   forecastViewFromUrl,
-  getDefaultLocation,
+  initialForecastLocation,
   locationFromMapPoint,
   mapPointFromLocation,
   moonLitPath,
   saveDefaultLocation,
   visibleForecastDetailRows,
-} from "./forecast-controls.js?v=20260505-preselect-map-point";
+} from "./forecast-controls.js?v=20260505-local-storage-default";
 import { FORECAST_MODELS, forecastModelLabel, normalizeForecastModel } from "./open-meteo.js?v=20260505-reverse-geocode";
 
 const defaultLocation = {
-  locationName: "Devínska Nová Ves, Okres Bratislava IV, Slovakia",
+  locationName: "Map start",
   lat: "48.21",
   lon: "16.97",
 };
@@ -349,7 +348,12 @@ function openMapPicker() {
   initializeMapPicker();
 
   const center = currentMapCenter();
-  setMapSelection(center);
+  const currentPoint = currentSelectedMapPoint();
+  if (currentPoint) {
+    setMapSelection(currentPoint);
+  } else {
+    clearMapSelection("Click on the map to select a point");
+  }
   mapPicker.setView([center.lat, center.lng], mapPicker.getZoom() || 10);
   requestAnimationFrame(() => {
     mapPicker.invalidateSize();
@@ -361,6 +365,23 @@ function closeMapPicker() {
   document.querySelector("#map-dialog").hidden = true;
   document.body.classList.remove("map-dialog-open");
   document.querySelector("#open-map-picker").focus();
+}
+
+function currentSelectedMapPoint() {
+  return mapPointFromLocation({
+    lat: document.querySelector("#latitude").value || currentLocation?.lat,
+    lon: document.querySelector("#longitude").value || currentLocation?.lon,
+  });
+}
+
+function clearMapSelection(message = "No point selected") {
+  selectedMapLocation = null;
+  if (mapMarker) {
+    mapMarker.remove();
+    mapMarker = null;
+  }
+  document.querySelector("#map-selected-coordinates").textContent = message;
+  document.querySelector("#use-map-picker").disabled = true;
 }
 
 function setMapSelection(point) {
@@ -464,15 +485,16 @@ document.querySelector(".actions").addEventListener("click", async (event) => {
 });
 
 const initialSearchParams = new URLSearchParams(window.location.search);
-const savedLocation = getDefaultLocation(window.localStorage, defaultLocation);
-const initialLocation = forecastLocationFromUrl(initialSearchParams, savedLocation);
+const initialLocation = initialForecastLocation(initialSearchParams, window.localStorage);
 currentView = forecastViewFromUrl(initialSearchParams);
 currentModel = normalizeForecastModel(initialSearchParams.get("model") || currentModel);
-currentLocation = initialLocation;
-applyLocationInputs(initialLocation);
 renderModelSelect();
 
-loadForecast(initialLocation, { view: currentView, model: currentModel }).catch((error) => {
-  setStatus(error.message);
-  document.querySelector("#forecast").setAttribute("aria-busy", "false");
-});
+if (initialLocation) {
+  currentLocation = initialLocation;
+  applyLocationInputs(initialLocation);
+  loadForecast(initialLocation, { view: currentView, model: currentModel }).catch((error) => {
+    setStatus(error.message);
+    document.querySelector("#forecast").setAttribute("aria-busy", "false");
+  });
+}

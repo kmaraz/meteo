@@ -7,6 +7,7 @@ import {
   forecastViewForAction,
   forecastViewFromUrl,
   getDefaultLocation,
+  initialForecastLocation,
   locationFromMapPoint,
   mapPointFromLocation,
   moonLitPath,
@@ -91,6 +92,42 @@ describe("forecast URL state", () => {
 
     assert.deepEqual(forecastLocationFromUrl(new URLSearchParams("lat=91&lon=20"), fallback), fallback);
     assert.deepEqual(forecastLocationFromUrl(new URLSearchParams("lat=49"), fallback), fallback);
+  });
+
+  it("does not select a startup location when URL coordinates are absent", () => {
+    assert.equal(forecastLocationFromUrl(new URLSearchParams()), null);
+  });
+
+  it("uses a saved default location when a shared URL has no coordinates", () => {
+    const storage = memoryStorage({
+      "meteo.defaultLocation": JSON.stringify({
+        locationName: "Stored default",
+        lat: "48.25125",
+        lon: "16.95946",
+      }),
+    });
+
+    assert.deepEqual(initialForecastLocation(new URLSearchParams(), storage), {
+      locationName: "Stored default",
+      lat: "48.25125",
+      lon: "16.95946",
+    });
+  });
+
+  it("prefers shared URL coordinates over a saved default location", () => {
+    const storage = memoryStorage({
+      "meteo.defaultLocation": JSON.stringify({
+        locationName: "Stored default",
+        lat: "48.25125",
+        lon: "16.95946",
+      }),
+    });
+
+    assert.deepEqual(initialForecastLocation(new URLSearchParams("lat=49.001&lon=20.002"), storage), {
+      locationName: "49.001, 20.002",
+      lat: "49.001",
+      lon: "20.002",
+    });
   });
 
   it("builds a share URL with location, model, and view state", () => {

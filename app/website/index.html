@@ -11,17 +11,17 @@
     <main>
       <section class="container address-panel" aria-label="Forecast lookup">
         <form id="forecast-form">
-          <input id="latitude" name="latitude" type="text" value="48.21" aria-label="Latitude">
-          <input id="longitude" name="longitude" type="text" value="16.97" aria-label="Longitude">
+          <input id="latitude" name="latitude" type="text" aria-label="Latitude" placeholder="Latitude">
+          <input id="longitude" name="longitude" type="text" aria-label="Longitude" placeholder="Longitude">
           <button id="open-map-picker" class="map-picker-trigger" type="button" aria-haspopup="dialog">or select on map</button>
           <button type="submit">Get Forecast <span aria-hidden="true" class="button-cloud"></span></button>
         </form>
       </section>
 
       <section class="container content-panel">
-        <h1 id="forecast-title">Forecast for Dev&iacute;nska Nov&aacute; Ves, Okres Bratislava IV, Slovakia (48.21,16.97)</h1>
+        <h1 id="forecast-title">No location selected</h1>
 
-        <h2 id="forecast-meta">Loading current Open-Meteo forecast...</h2>
+        <h2 id="forecast-meta">Enter coordinates or select a point on the map.</h2>
 
         <div class="actions">
           <label class="model-picker" for="model-select">
@@ -38,7 +38,7 @@
           <div id="forecast"></div>
         </section>
 
-        <p id="forecast-status" class="provider" aria-live="polite">Powered by Open-Meteo Weather API</p>
+        <p id="forecast-status" class="provider" aria-live="polite">No forecast loaded</p>
       </section>
     </main>
 
@@ -63,6 +63,6 @@
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script type="module" src="./script.js?v=20260505-reverse-geocode"></script>
+    <script type="module" src="./script.js?v=20260505-local-storage-default"></script>
   </body>
 </html>
