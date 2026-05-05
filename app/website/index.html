@@ -19,9 +19,9 @@
       </section>
 
       <section class="container content-panel">
-        <h1 id="forecast-title">No location selected</h1>
+        <h1 id="forecast-title" class="loading-state">Loading forecast state...</h1>
 
-        <h2 id="forecast-meta">Enter coordinates or select a point on the map.</h2>
+        <h2 id="forecast-meta">Checking URL and saved default location.</h2>
 
         <div class="actions">
           <label class="model-picker" for="model-select">
@@ -38,7 +38,7 @@
           <div id="forecast"></div>
         </section>
 
-        <p id="forecast-status" class="provider" aria-live="polite">No forecast loaded</p>
+        <p id="forecast-status" class="provider" aria-live="polite">Loading forecast state</p>
       </section>
     </main>
 
@@ -63,6 +63,6 @@
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script type="module" src="./script.js?v=20260505-local-storage-default"></script>
+    <script type="module" src="./script.js?v=20260505-loading-state"></script>
   </body>
 </html>

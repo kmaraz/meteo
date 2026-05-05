@@ -183,11 +183,22 @@ function updateForecastMeta() {
     dateStyle: "short",
     timeStyle: "medium",
   });
-  document.querySelector("#forecast-title").textContent =
-    `Forecast for ${meta.locationName} (${meta.requested.latitude},${meta.requested.longitude})`;
+  setForecastTitle(`Forecast for ${meta.locationName} (${meta.requested.latitude},${meta.requested.longitude})`);
   document.querySelector("#forecast-meta").textContent =
     `Generated: ${generated}. Forecast: ${meta.forecastFrom} to ${meta.forecastTo}. Timezone: ${meta.timezone}.`;
   setStatus("Powered by Open-Meteo Weather API");
+}
+
+function setForecastTitle(title, options = {}) {
+  const target = document.querySelector("#forecast-title");
+  target.textContent = title;
+  target.classList.toggle("loading-state", Boolean(options.loading));
+}
+
+function showNoLocationSelected() {
+  setForecastTitle("No location selected");
+  document.querySelector("#forecast-meta").textContent = "Enter coordinates or select a point on the map.";
+  setStatus("No forecast loaded");
 }
 
 async function loadForecast({ lat, lon, locationName }, options = {}) {
@@ -497,4 +508,6 @@ if (initialLocation) {
     setStatus(error.message);
     document.querySelector("#forecast").setAttribute("aria-busy", "false");
   });
+} else {
+  showNoLocationSelected();
 }
